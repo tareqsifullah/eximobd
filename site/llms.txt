@@ -54,3 +54,8 @@ Eximo advises Bangladeshi nationals on study, work, tourist, family and medical 
 - [bn/countries/malaysia.html](https://www.eximobd.com/bn/countries/malaysia.html)
 - [bn/countries/japan.html](https://www.eximobd.com/bn/countries/japan.html)
 - [bn/countries/south-korea.html](https://www.eximobd.com/bn/countries/south-korea.html)
+- [bn/countries/qatar.html](https://www.eximobd.com/bn/countries/qatar.html)
+- [bn/countries/kuwait.html](https://www.eximobd.com/bn/countries/kuwait.html)
+- [bn/countries/maldives.html](https://www.eximobd.com/bn/countries/maldives.html)
+- [bn/countries/singapore.html](https://www.eximobd.com/bn/countries/singapore.html)
+- [bn/countries/uae.html](https://www.eximobd.com/bn/countries/uae.html)

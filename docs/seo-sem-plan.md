@@ -59,7 +59,7 @@ Audit: Lighthouse 12 (mobile), 22 Nov 2026.
 - Content lives in `build/bn.mjs`
 
 ## Next content work (recommended order)
-1. **More Bangla country guides** — Qatar, Kuwait, Maldives, Singapore, UAE next (largest worker markets).
+1. ~~More Bangla country guides~~ — done: Qatar, Kuwait, Maldives, Singapore, UAE added (10 Bangla country guides in total).
 2. **Italy-specific pages** for the Genova office: permesso di soggiorno, family reunification, Decreto Flussi click-day guide.
 3. **Monthly news/updates page** — market openings (Malaysia, Oman), quota dates, scholarship deadlines. Fresh content earns links and AI citations.
 4. **Client stories** with permission (real outcomes build trust and E-E-A-T).
