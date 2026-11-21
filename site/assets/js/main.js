@@ -4,7 +4,7 @@
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var inSub = /\/(countries|visas)\//.test(location.pathname);
-  var root = inSub ? '../' : '';
+  var root = document.documentElement.getAttribute('data-root') || (inSub ? '../' : '');
 
   // Drawer
   var drawer = $('#drawer');
@@ -23,12 +23,14 @@
   // Sentence finder
   $$('[data-finder]').forEach(function (f) {
     var g = $('[data-f-goal]', f), c = $('[data-f-country]', f);
-    var meta = f.nextElementSibling;
+    var meta = f.parentNode.querySelector('.finder-meta');
+    var bnSlugs = (f.getAttribute('data-bn') || '').split(',');
     function update() {
       var country = D.countries.find(function (x) { return x.slug === c.value; });
       if (!country) return;
       var v = country.visas[g.value];
-      $('[data-f-link]', f).href = root + 'countries/' + country.slug + '.html#' + g.value;
+      var dir = f.hasAttribute('data-bn') && bnSlugs.indexOf(country.slug) > -1 ? 'bn/countries/' : 'countries/';
+      $('[data-f-link]', f).href = root + dir + country.slug + '.html#' + g.value;
       if (meta) {
         $('[data-f-name]', meta).textContent = v.name;
         $('[data-f-time]', meta).textContent = 'Typical processing: ' + v.time;
@@ -164,9 +166,14 @@
       req.forEach(function (i) { i.classList.toggle('is-bad', bad.indexOf(i) > -1); });
       if (bad.length) { bad[0].focus(); return; }
       var f = function (n) { var el = form.elements[n]; return el ? el.value.trim() : ''; };
-      var msg = 'Hello Eximo, I would like a consultation.\n\nName: ' + f('name') + '\nPhone: ' + f('phone') +
-        (f('email') ? '\nEmail: ' + f('email') : '') + '\nInterested in: ' + f('goal') + '\nDestination: ' + f('country') +
-        (f('message') ? '\n\nAbout me: ' + f('message') : '');
+      var bn = form.getAttribute('data-lang') === 'bn';
+      var msg = bn
+        ? 'হ্যালো Eximo, আমি পরামর্শ নিতে চাই।\n\nনাম: ' + f('name') + '\nফোন: ' + f('phone') +
+          (f('email') ? '\nইমেইল: ' + f('email') : '') + '\nআগ্রহ: ' + f('goal') + '\nদেশ: ' + f('country') +
+          (f('message') ? '\n\nআমার সম্পর্কে: ' + f('message') : '')
+        : 'Hello Eximo, I would like a consultation.\n\nName: ' + f('name') + '\nPhone: ' + f('phone') +
+          (f('email') ? '\nEmail: ' + f('email') : '') + '\nInterested in: ' + f('goal') + '\nDestination: ' + f('country') +
+          (f('message') ? '\n\nAbout me: ' + f('message') : '');
       var wa = 'https://wa.me/' + form.getAttribute('data-wa') + '?text=' + encodeURIComponent(msg);
       track('generate_lead', { form: 'consultation', goal: f('goal'), destination: f('country') });
       var ep = form.getAttribute('data-endpoint');

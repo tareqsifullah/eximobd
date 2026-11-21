@@ -50,8 +50,16 @@ Audit: Lighthouse 12 (mobile), 22 Nov 2026.
 5. **Facebook page** — add the website link and the same phone/address (consistent NAP helps local ranking).
 6. **Real email address** — confirm the inbox to publish (currently `info@eximobd.com`).
 
+## Bangla pages (done)
+- [x] `/bn/` home, work abroad, contact, and country guides for Saudi Arabia, Italy, Malaysia, Japan and South Korea (all five visa types each)
+- [x] hreflang en ↔ bn on every pair, plus in `sitemap.xml`; language switch in the header
+- [x] Bangla fonts self-hosted (Noto Serif / Sans Bengali), loaded only where Bangla text appears
+- [x] Bangla FAQ structured data; WhatsApp form sends the enquiry in Bangla
+- Lighthouse (Bangla): performance 85–89, accessibility 100, SEO 100
+- Content lives in `build/bn.mjs`
+
 ## Next content work (recommended order)
-1. **Bangla version** of the key pages (home, work abroad, Saudi Arabia, Italy, Malaysia, Japan, Korea). Most searches from Bangladesh are in Bangla; this is the largest ranking opportunity.
+1. **More Bangla country guides** — Qatar, Kuwait, Maldives, Singapore, UAE next (largest worker markets).
 2. **Italy-specific pages** for the Genova office: permesso di soggiorno, family reunification, Decreto Flussi click-day guide.
 3. **Monthly news/updates page** — market openings (Malaysia, Oman), quota dates, scholarship deadlines. Fresh content earns links and AI citations.
 4. **Client stories** with permission (real outcomes build trust and E-E-A-T).

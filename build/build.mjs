@@ -6,6 +6,7 @@ import {
   site, visaTypes, countries, faqs, workMarkets, departureSteps, skilledRoutes,
   nomadVisas, investmentPrograms, languageCourses,
 } from './data.mjs';
+import * as BN from './bn.mjs';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'site');
 const year = new Date().getFullYear();
@@ -63,8 +64,20 @@ const crumbNames = {
   'digital-nomad.html': 'Digital nomad visas', 'residency-citizenship.html': 'Residency & second citizenship', 'languages.html': 'Language courses',
   'scholarships.html': 'Scholarships', 'career-counselling.html': 'Career counselling', 'about.html': 'About', 'contact.html': 'Contact',
 };
+const BN_PAIRS = Object.fromEntries([
+  ['index.html', 'bn/index.html'], ['work-abroad.html', 'bn/work-abroad.html'], ['contact.html', 'bn/contact.html'],
+  ...Object.keys(BN.countriesBn).map((s) => [`countries/${s}.html`, `bn/countries/${s}.html`]),
+]);
+const EN_PAIRS = Object.fromEntries(Object.entries(BN_PAIRS).map(([e, n]) => [n, e]));
+const pageUrl = (p) => `${site.url}/${p.replace(/(^|\/)index\.html$/, '$1')}`;
 function breadcrumbSchema(path) {
-  if (path === 'index.html') return null;
+  if (path === 'index.html' || path === 'bn/index.html') return null;
+  if (path.startsWith('bn/')) {
+    const slug = path.match(/^bn\/countries\/(.+)\.html$/)?.[1];
+    const name = slug ? BN.countryNames[slug] : path === 'bn/work-abroad.html' ? BN.ui.work : BN.ui.contact;
+    const items = [[BN.ui.home, 'bn/index.html'], [name, path]];
+    return { '@type': 'BreadcrumbList', itemListElement: items.map(([n, p], i) => ({ '@type': 'ListItem', position: i + 1, name: n, item: pageUrl(p) })) };
+  }
   const items = [['Home', '']];
   const [dir, file] = path.includes('/') ? path.split('/') : [null, path];
   if (dir === 'countries') items.push(['Destinations', 'destinations.html'], [countries.find((c) => `${c.slug}.html` === file).name, path]);
@@ -75,15 +88,73 @@ function breadcrumbSchema(path) {
 const STYLE = readFileSync(join(OUT, 'assets/css/style.css'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{}:;,>])\s*/g, '$1').replace(/;}/g, '}').trim();
 
-function layout({ title, description, root, active = '', body, path, schema = [] }) {
+const bnChrome = {
+  header: ({ root, enAlt }) => {
+    const cLinks = Object.keys(BN.countriesBn).map((s) => `<a href="${root}bn/countries/${s}.html">${BN.countryNames[s]}</a>`).join('');
+    return `<header class="header">
+  <div class="wrap">
+    <a class="brand" href="${root}bn/index.html" aria-label="${site.name} — ${BN.ui.home}"><img src="${root}assets/img/logo-68.jpg" alt="" width="34" height="34"><span>${site.name}</span></a>
+    <nav class="nav" aria-label="প্রধান মেনু">
+      <a href="${root}bn/index.html">${BN.ui.home}</a>
+      <a href="${root}bn/work-abroad.html">${BN.ui.work}</a>
+      <div class="nav-item"><button type="button">${BN.ui.destinations}</button><div class="dd">${cLinks}<a href="${root}destinations.html">${BN.ui.allCountriesEn} ${A}</a></div></div>
+      <a href="${root}bn/contact.html">${BN.ui.contact}</a>
+    </nav>
+    <a class="lang-switch" href="${root}${enAlt || 'index.html'}" hreflang="en" lang="en">${BN.ui.english}</a>
+    <a class="btn header-cta" href="${root}bn/contact.html#book">${BN.ui.book}</a>
+    <button class="menu-btn" type="button" data-drawer-open aria-expanded="false" aria-controls="drawer">${BN.ui.menu}</button>
+  </div>
+</header>
+<div class="drawer" id="drawer" aria-hidden="true">
+  <div class="wrap">
+    <div class="drawer-top"><a class="brand" href="${root}bn/index.html"><img src="${root}assets/img/logo-68.jpg" alt="" width="34" height="34"><span>${site.name}</span></a><button class="menu-btn" style="display:inline-block;margin:0" type="button" data-drawer-close>${BN.ui.close}</button></div>
+    <a class="d-link" href="${root}bn/index.html">${BN.ui.home}</a>
+    <a class="d-link" href="${root}bn/work-abroad.html">${BN.ui.work}</a>
+    <details><summary>${BN.ui.destinations}</summary><div class="d-sub">${cLinks}<a href="${root}destinations.html">${BN.ui.allCountriesEn}</a></div></details>
+    <a class="d-link" href="${root}bn/contact.html">${BN.ui.contact}</a>
+    <a class="d-link" href="${root}${enAlt || 'index.html'}" lang="en">English</a>
+    <a class="btn btn--block" href="${root}bn/contact.html#book">${BN.ui.book} ${A}</a>
+  </div>
+</div>`;
+  },
+  footer: ({ root }) => `<footer class="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-about">
+        <a class="brand" href="${root}bn/index.html"><img src="${root}assets/img/logo-68.jpg" alt="" width="34" height="34"><span>${site.name}</span></a>
+        <p>${BN.ui.footerAbout}</p>
+      </div>
+      <div><p class="f-h">${BN.ui.fCountries}</p><ul>${Object.keys(BN.countriesBn).map((s) => `<li><a href="${root}bn/countries/${s}.html">${BN.countryNames[s]}</a></li>`).join('')}<li><a href="${root}destinations.html">${BN.ui.allCountriesEn}</a></li></ul></div>
+      <div><p class="f-h">${BN.ui.fServices}</p><ul>${BN.servicesBn.filter(([h]) => !h.startsWith('bn/')).map(([h, t]) => `<li><a href="${root}${h}">${t}</a></li>`).join('')}</ul></div>
+      <div><p class="f-h">${BN.ui.work}</p><ul><li><a href="${root}bn/work-abroad.html">${BN.ui.work}</a></li><li><a href="${root}work-abroad.html" lang="en">Work abroad (English)</a></li></ul></div>
+      <div><p class="f-h">${BN.ui.fContact}</p><ul>
+        <li><a href="tel:${tel}">${site.phone}</a></li>
+        <li><a href="https://wa.me/${site.whatsapp}" target="_blank" rel="noopener">${BN.ui.whatsapp}</a></li>
+        <li><a href="mailto:${site.email}">${site.email}</a></li>
+        <li>${BN.ui.office} — <a href="${site.officeMap}" target="_blank" rel="noopener">${site.office}</a></li>
+        <li><a href="${site.facebook}" target="_blank" rel="noopener">${BN.ui.facebook}</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-base">
+      <span>© ${year} ${site.legal}</span>
+      <p>${BN.ui.footerDisclaimer}</p>
+    </div>
+  </div>
+</footer>`,
+};
+
+function layout({ title, description, root, active = '', body, path, schema = [], lang = 'en' }) {
+  const bn = lang === 'bn';
+  const enAlt = bn ? EN_PAIRS[path] : path;
+  const bnAlt = bn ? path : BN_PAIRS[path];
   const ddLinks = (list) => list.map(([h, t, s]) => `<a href="${root}${h}">${t}<small>${s}</small></a>`).join('');
   const dest = regions.map(([r, label]) => `<div><p class="f-h">${label}</p>${byRegion(r).map((c) => `<a href="${root}countries/${c.slug}.html">${c.name}</a>`).join('')}</div>`).join('');
   const act = (k) => (active === k ? ' is-active' : '');
-  const url = path === 'index.html' ? `${site.url}/` : `${site.url}/${path}`;
+  const url = pageUrl(path);
   const graph = [orgSchema, breadcrumbSchema(path), ...schema].filter(Boolean);
   const css = STYLE.replace(/url\(\.\.\/fonts\//g, `url(${root}assets/fonts/`);
   return `<!doctype html>
-<html lang="en">
+<html lang="${lang}" data-root="${root}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -92,7 +163,8 @@ function layout({ title, description, root, active = '', body, path, schema = []
 <link rel="canonical" href="${url}">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta property="og:site_name" content="${site.name}">
-<meta property="og:locale" content="en_US">
+<meta property="og:locale" content="${bn ? 'bn_BD' : 'en_US'}">
+${bnAlt && enAlt ? `<link rel="alternate" hreflang="en" href="${pageUrl(enAlt)}">\n<link rel="alternate" hreflang="bn" href="${pageUrl(bnAlt)}">\n<link rel="alternate" hreflang="x-default" href="${pageUrl(enAlt)}">` : ''}
 <meta property="og:url" content="${url}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
@@ -104,15 +176,15 @@ function layout({ title, description, root, active = '', body, path, schema = []
 <meta name="theme-color" content="#faf8f3">
 ${site.gscVerification ? `<meta name="google-site-verification" content="${site.gscVerification}">\n` : ''}<link rel="icon" type="image/png" sizes="32x32" href="${root}assets/img/favicon-32.png">
 <link rel="apple-touch-icon" href="${root}assets/img/apple-touch-icon.png">
-<link rel="preload" href="${root}assets/fonts/newsreader-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="${root}assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+${bn ? `<link rel="preload" href="${root}assets/fonts/noto-serif-bengali.woff2" as="font" type="font/woff2" crossorigin>\n<link rel="preload" href="${root}assets/fonts/noto-sans-bengali.woff2" as="font" type="font/woff2" crossorigin>` : `<link rel="preload" href="${root}assets/fonts/newsreader-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="${root}assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>`}
 <style>${css}</style>
 <script>document.documentElement.classList.add('js')</script>
 <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': graph })}</script>
 ${site.ga4 ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${site.ga4}"></script>\n<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${site.ga4}');</script>\n` : ''}</head>
 <body>
-<a class="sr-only" href="#main">Skip to content</a>
-<header class="header">
+<a class="sr-only" href="#main">${bn ? 'মূল লেখায় যান' : 'Skip to content'}</a>
+${bn ? bnChrome.header({ root, path, enAlt }) : `<header class="header">
   <div class="wrap">
     <a class="brand" href="${root}index.html" aria-label="${site.name} home"><img src="${root}assets/img/logo-68.jpg" alt="" width="34" height="34"><span>${site.name}</span></a>
     <nav class="nav" aria-label="Main">
@@ -123,6 +195,7 @@ ${site.ga4 ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${s
       <div class="nav-item${act('study')}"><button type="button">Study</button><div class="dd">${ddLinks(studyLinks)}</div></div>
       <a class="${act('contact').trim()}" href="${root}contact.html">Contact</a>
     </nav>
+    <a class="lang-switch" href="${root}${bnAlt || 'bn/index.html'}" hreflang="bn" lang="bn">বাংলা</a>
     <a class="btn header-cta" href="${root}contact.html#book">Book a consultation</a>
     <button class="menu-btn" type="button" data-drawer-open aria-expanded="false" aria-controls="drawer">Menu</button>
   </div>
@@ -137,13 +210,14 @@ ${site.ga4 ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${s
     <details><summary>Study</summary><div class="d-sub">${studyLinks.map(([h, t]) => `<a href="${root}${h}">${t}</a>`).join('')}</div></details>
     <a class="d-link" href="${root}about.html">About</a>
     <a class="d-link" href="${root}contact.html">Contact</a>
+    <a class="d-link" href="${root}${bnAlt || 'bn/index.html'}" lang="bn">বাংলা</a>
     <a class="btn btn--block" href="${root}contact.html#book">Book a consultation ${A}</a>
   </div>
-</div>
+</div>`}
 <main id="main">
 ${body}
 </main>
-<footer class="footer">
+${bn ? bnChrome.footer({ root }) : `<footer class="footer">
   <div class="wrap">
     <div class="footer-grid">
       <div class="footer-about">
@@ -167,7 +241,7 @@ ${body}
       <p>Visa, residence and citizenship decisions are made only by the relevant government. Requirements change often; information here is general guidance and is confirmed during consultation. Overseas employment is processed through BMET-licensed recruiting agencies.</p>
     </div>
   </div>
-</footer>
+</footer>`}
 <script defer src="${root}assets/js/data.js"></script>
 <script defer src="${root}assets/js/main.js"></script>
 </body>
@@ -783,12 +857,249 @@ countries.forEach((c) => out(`countries/${c.slug}.html`, countryPage(c)));
 visaTypes.forEach((v) => out(`visas/${v.key}.html`, visaPage(v)));
 
 
+// ---------- Bangla pages (/bn/) ----------
+const bnPhead = ({ root, crumb, label, h1, lede, extra = '' }) => `
+<section class="phead">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="ব্রেডক্রাম্ব"><a href="${root}bn/index.html">${BN.ui.home}</a><span aria-hidden="true">/</span><span>${crumb}</span></nav>
+    <div class="phead-grid">
+      <div><span class="label">${label}</span><h1>${h1}</h1></div>
+      <div><p class="lede">${lede}</p><p class="small" style="margin:18px 0 0">${BN.ui.lastReviewed}: ${BN.ui.reviewed}</p></div>
+    </div>
+    ${extra}
+  </div>
+</section>`;
+
+const bnCta = (root, h = 'কোন পথ আপনার জন্য <em>ঠিক?</em>', p = 'পরামর্শ নিন। আমরা আপনার প্রোফাইল দেখে সোজাসুজি উত্তর দিই — এমনকি উত্তর যদি হয় “এখনই না”।') => `
+<section class="cta">
+  <div class="wrap cta-grid">
+    <div><h2>${h}</h2><p>${p}</p></div>
+    <div class="cta-actions">
+      <a class="btn btn--paper btn--block" href="${root}bn/contact.html#book">${BN.ui.book} ${A}</a>
+      <a class="btn btn--ghost-light btn--block" href="https://wa.me/${site.whatsapp}" target="_blank" rel="noopener">${BN.ui.messageWa}</a>
+    </div>
+  </div>
+</section>`;
+
+const bnForm = () => `
+<div id="book">
+  <form class="form" data-form data-wa="${site.whatsapp}" data-lang="bn" novalidate>
+    <div class="fld"><label for="f-name">আপনার নাম</label><input class="in" id="f-name" name="name" required autocomplete="name"></div>
+    <div class="fld"><label for="f-phone">ফোন / হোয়াটসঅ্যাপ</label><input class="in" id="f-phone" name="phone" type="tel" required autocomplete="tel"></div>
+    <div class="fld full"><label for="f-email">ইমেইল (ঐচ্ছিক)</label><input class="in" id="f-email" name="email" type="email" autocomplete="email"></div>
+    <div class="fld"><label for="f-goal">আগ্রহের বিষয়</label><select class="in" id="f-goal" name="goal">${BN.goalsBn.map((g) => `<option>${g}</option>`).join('')}</select></div>
+    <div class="fld"><label for="f-country">দেশ</label><select class="in" id="f-country" name="country"><option>এখনো ঠিক করিনি</option>${countries.map((c) => `<option>${BN.countryNames[c.slug]}</option>`).join('')}</select></div>
+    <div class="fld full"><label for="f-msg">আপনার সম্পর্কে (ঐচ্ছিক)</label><textarea class="in" id="f-msg" name="message" placeholder="যেমন: বিএসসি সিভিল ইঞ্জিনিয়ারিং, ৪ বছরের অভিজ্ঞতা, IELTS ৬.৫"></textarea></div>
+    <div class="full"><button class="btn" type="submit">হোয়াটসঅ্যাপে পাঠান ${A}</button><p class="small" style="margin-top:14px">আপনার তথ্যসহ হোয়াটসঅ্যাপ খুলবে। তথ্য শুধু আপনাকে উত্তর দিতে ব্যবহার করা হয়।</p></div>
+  </form>
+  <div class="form-done" aria-live="polite"><h3>প্রায় শেষ — হোয়াটসঅ্যাপে “সেন্ড” চাপুন।</h3><p class="muted" style="margin-top:10px">আপনার তথ্য আমাদের পরামর্শদাতাদের কাছে হোয়াটসঅ্যাপ মেসেজে তৈরি আছে। না খুললে <a class="tlink" href="https://wa.me/${site.whatsapp}" target="_blank" rel="noopener">এখানে হোয়াটসঅ্যাপ খুলুন</a>।</p></div>
+</div>`;
+
+const bnMarketTable = (root, rows) => `
+<div class="tbl-wrap"><table class="tbl tbl--stack">
+  <thead><tr><th>দেশ</th><th>কর্মী, ২০২৫</th><th>বাজারের অবস্থা</th><th>প্রধান খাত</th><th>পথ</th></tr></thead>
+  <tbody>${rows.map((m) => { const [fig, status, sectors, route] = BN.marketsBn[m.name]; const name = m.slug ? BN.countryNames[m.slug] : 'ওমান'; const href = m.slug ? (BN.countriesBn[m.slug] ? `${root}bn/countries/${m.slug}.html#work` : `${root}countries/${m.slug}.html#work`) : null; return `<tr><td>${href ? `<a class="row-link" href="${href}">${name}</a>` : name}</td><td class="num" data-h="কর্মী">${fig}</td><td data-h="অবস্থা"><span class="status${statusClass(m.status)}">${status}</span></td><td data-h="খাত">${sectors}</td><td data-h="পথ">${route}</td></tr>`; }).join('')}</tbody>
+</table></div>
+<p class="source">২০২৫ সালের আনুমানিক বহির্গমন: BMET-এর তথ্য, The Business Standard ও বাসস-এ প্রকাশিত (জানুয়ারি ২০২৬)। *সংযুক্ত আরব আমিরাতের সংখ্যা জানুয়ারি–আগস্ট ২০২৬-এর (BMET, bdnews24)। বাজারের অবস্থা ২০২৬-এর শেষ দিক পর্যন্ত প্রকাশিত খবরের ভিত্তিতে, এবং প্রায়ই বদলায় — সিদ্ধান্তের আগে আমরা নিশ্চিত করি।</p>`;
+
+function bnHome() {
+  const root = '../';
+  const body = `
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div><span class="label">${site.name} · জেনোভা, ইতালি</span><h1>বিদেশে নতুন জীবনের জন্য <em>নির্ভরযোগ্য পরামর্শ।</em></h1></div>
+      <div class="hero-aside">
+        <p class="lede">কোথায় যাবেন, খরচ কীভাবে সামলাবেন, আর কোন ভিসায় যাবেন — শিক্ষার্থী, কর্মী ও পেশাজীবীদের এসব সিদ্ধান্তে আমরা সাহায্য করি, তারপর প্রতিটি কাগজ যত্ন নিয়ে প্রস্তুত করি।</p>
+        <div class="hero-actions"><a class="btn" href="contact.html#book">${BN.ui.book} ${A}</a><a class="btn btn--line" href="https://wa.me/${site.whatsapp}" target="_blank" rel="noopener">${BN.ui.messageWa}</a></div>
+      </div>
+    </div>
+    <div class="finder" data-finder data-bn="${Object.keys(BN.countriesBn).join(',')}">
+      <span class="f-label">আপনার পথ খুঁজুন</span>
+      <span>আমি যেতে চাই</span>
+      <select aria-label="দেশ" data-f-country>${countries.map((c) => `<option value="${c.slug}"${c.slug === 'saudi-arabia' ? ' selected' : ''}>${BN.countryNames[c.slug]}</option>`).join('')}</select>
+      <select aria-label="উদ্দেশ্য" data-f-goal>${visaTypes.map((v) => `<option value="${v.key}"${v.key === 'work' ? ' selected' : ''}>${BN.finderVerbs[v.key]}</option>`).join('')}</select>
+      <a class="btn f-go" href="#" data-f-link>দেখুন ${A}</a>
+    </div>
+    <p class="small" style="margin-top:12px">৫টি দেশের গাইড বাংলায় আছে; বাকি দেশগুলোর বিস্তারিত ইংরেজিতে।</p>
+    <div class="figures">
+      <div><strong>১১.৩ লাখ</strong><span>বাংলাদেশি ২০২৫ সালে বিদেশে চাকরি নিয়ে গেছেন</span><small>উৎস: BMET</small></div>
+      <div><strong>২০</strong><span>দেশ নিয়ে আমরা পরামর্শ দিই, প্রতিটিতে পাঁচ ধরনের ভিসা</span></div>
+      <div><strong>১০১</strong><span>দেশের সঙ্গে বাংলাদেশ দ্বৈত নাগরিকত্ব অনুমোদন করে</span><small>উৎস: স্বরাষ্ট্র মন্ত্রণালয়</small></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" style="margin-top:96px">
+  <div class="wrap">
+    ${head('01', 'আমাদের সেবা', 'আটটি সেবা, <em>একজন পরামর্শদাতা।</em>', 'যিনি আপনার প্রোফাইল যাচাই করেন, জমা দেওয়ার আগে তিনিই আপনার ফাইল পরীক্ষা করেন। কিছু বিস্তারিত পাতা এখন ইংরেজিতে।')}
+    <div class="index">${BN.servicesBn.map(([h, t, d], i) => `<a href="${root}${h}"><span class="n">${String(i + 1).padStart(2, '0')}</span><h3>${t}</h3><p>${d}</p>${A}</a>`).join('')}</div>
+  </div>
+</section>
+
+<section class="sec band">
+  <div class="wrap">
+    ${head('02', 'বিদেশে চাকরি', 'বাংলাদেশিরা এখন <em>কোথায় কাজ করছেন।</em>', '২০২৫ সালে বিদেশে যাওয়া প্রতি তিনজনের প্রায় দুজনই গেছেন সৌদি আরবে। আমরা ভেবেচিন্তে দেশ বাছাইয়ে সাহায্য করি এবং টাকা দেওয়ার আগে প্রতিটি অফার যাচাই করি।')}
+    ${bnMarketTable(root, workMarkets.slice(0, 7))}
+    <p style="margin-top:36px"><a class="tlink" href="work-abroad.html">সব দেশ, বহির্গমন প্রক্রিয়া ও প্রতারণা এড়ানোর উপায় ${A}</a></p>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    ${head('03', 'দেশভিত্তিক গাইড', 'বাংলায় পাঁচটি <em>দেশের গাইড।</em>')}
+    <div class="directory">${Object.keys(BN.countriesBn).map((s) => `<a href="countries/${s}.html">${BN.countryNames[s]}<small>${BN.visaLabels.work}</small></a>`).join('')}<a href="${root}destinations.html">${BN.ui.allCountriesEn}<small>EN</small></a></div>
+  </div>
+</section>
+
+<section class="sec sec--tint">
+  <div class="wrap cols">
+    <div class="sticky"><span class="label"><b>04</b>প্রশ্ন ও উত্তর</span><h2>সোজাসুজি <em>উত্তর।</em></h2></div>
+    <div class="faq">${BN.faqsBn.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('')}</div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap cols">
+    <div><span class="label"><b>05</b>${BN.ui.contact}</span><h2>পরামর্শদাতার সঙ্গে <em>কথা বলুন।</em></h2><p class="body-lg" style="margin-top:20px">প্রথম পরামর্শ বিনামূল্যে। আপনার সনদ, পাসপোর্ট ও অফার লেটার থাকলে সঙ্গে রাখুন — আপনি ঠিক কোথায় আছেন, আমরা স্পষ্ট করে জানাব।</p>
+      <dl class="contact-dl"><div><dt>${BN.ui.phone}</dt><dd><a href="tel:${tel}">${site.phone}</a></dd></div><div><dt>${BN.ui.whatsapp}</dt><dd><a href="https://wa.me/${site.whatsapp}" target="_blank" rel="noopener">${site.phone}</a></dd></div><div><dt>${BN.ui.office}</dt><dd><a href="${site.officeMap}" target="_blank" rel="noopener">${site.office}</a></dd></div></dl>
+    </div>
+    ${bnForm()}
+  </div>
+</section>`;
+  return layout({ lang: 'bn', root, path: 'bn/index.html', body,
+    title: `${site.name} | বিদেশে পড়াশোনা, ওয়ার্ক ভিসা ও অভিবাসন পরামর্শ`,
+    description: 'বাংলাদেশি শিক্ষার্থী, কর্মী ও পেশাজীবীদের জন্য বিদেশে পড়াশোনা, ওয়ার্ক ভিসা, দক্ষ অভিবাসন ও দ্বিতীয় রেসিডেন্সির পরামর্শ। ২০টি দেশ, পাঁচ ধরনের ভিসা। প্রথম পরামর্শ বিনামূল্যে।',
+    schema: [faqSchema(BN.faqsBn)] });
+}
+
+function bnWork() {
+  const root = '../';
+  const body = `
+${bnPhead({ root, crumb: BN.ui.work, label: 'বিদেশে কর্মসংস্থান', h1: 'বিদেশে চাকরি, <em>নিরাপদে।</em>', lede: '২০২৫ সালে ১০ লাখের বেশি বাংলাদেশি বিদেশে চাকরি নিয়ে গেছেন। আমরা সঠিক দেশ বাছাই, অফার আসল কিনা যাচাই এবং যাত্রার প্রস্তুতিতে সাহায্য করি — শুধু BMET-লাইসেন্সপ্রাপ্ত রিক্রুটিং এজেন্সির সঙ্গে কাজ করে।' })}
+<section class="sec band sec--flush">
+  <div class="wrap">${head('01', 'বাজারের চিত্র', 'বাংলাদেশি কর্মীদের <em>প্রধান গন্তব্য।</em>')}${bnMarketTable(root, workMarkets)}</div>
+</section>
+<section class="sec">
+  <div class="wrap">
+    ${head('02', 'পথ', 'বিদেশে কাজের <em>তিনটি পথ।</em>')}
+    <div class="grid-3">
+      <div><h3>সরকারি চ্যানেল</h3><p>নির্ধারিত খরচ ও অফিশিয়াল বাছাইয়ে সরকার-টু-সরকার নিয়োগ।</p><ul class="plain"><li><a class="tlink" href="countries/south-korea.html#work">দক্ষিণ কোরিয়া — BOESL-এর মাধ্যমে EPS</a></li><li><a class="tlink" href="countries/japan.html#work">জাপান — স্পেসিফায়েড স্কিলড ওয়ার্কার</a></li><li><a class="tlink" href="countries/malaysia.html#work">মালয়েশিয়া — অনুমোদিত চ্যানেল</a></li></ul></div>
+      <div><h3>নিয়োগকর্তার মাধ্যমে</h3><p>বিদেশি নিয়োগকর্তা BMET-লাইসেন্সপ্রাপ্ত এজেন্সির মাধ্যমে ভিসা দেন। উপসাগরীয় দেশের বেশিরভাগ চাকরি এভাবেই হয়।</p><ul class="plain"><li><a class="tlink" href="countries/saudi-arabia.html#work">সৌদি আরব</a></li><li><a class="tlink" href="${root}countries/qatar.html#work">কাতার (ইংরেজি)</a></li><li><a class="tlink" href="${root}countries/kuwait.html#work">কুয়েত</a> · <a class="tlink" href="${root}countries/maldives.html#work">মালদ্বীপ</a></li></ul></div>
+      <div><h3>দক্ষ ও পেশাজীবী</h3><p>স্নাতক ও অভিজ্ঞ পেশাজীবীদের জন্য স্পনসরড চাকরি ও পয়েন্টভিত্তিক পথ।</p><ul class="plain"><li><a class="tlink" href="countries/italy.html#work">ইতালি — ডেক্রেতো ফ্লুসি ও ব্লু কার্ড</a></li><li><a class="tlink" href="${root}countries/singapore.html#work">সিঙ্গাপুর — S Pass / EP</a></li><li><a class="tlink" href="${root}skilled-migration.html">দক্ষ অভিবাসন (PR) ${A}</a></li></ul></div>
+    </div>
+  </div>
+</section>
+<section class="sec sec--tint">
+  <div class="wrap cols">
+    <div class="sticky"><span class="label"><b>03</b>যাওয়ার আগে</span><h2>বহির্গমন <em>প্রক্রিয়া।</em></h2><p class="body-lg" style="margin-top:20px">বৈধভাবে বিদেশে যাওয়া প্রত্যেক কর্মীকে এই ধাপগুলো পার হতে হয়। প্রতিটি ধাপে আমরা পাশে থাকি এবং কাগজপত্র পরীক্ষা করি।</p></div>
+    ${steps(BN.departureStepsBn)}
+  </div>
+</section>
+<section class="sec">
+  <div class="wrap cols">
+    <div><span class="label"><b>04</b>নিজেকে রক্ষা করুন</span><h2>রিক্রুটিং প্রতারণা <em>চেনার উপায়।</em></h2></div>
+    <div>
+      <ul class="ticks">${BN.fraudBn.map((f) => `<li>${f}</li>`).join('')}</ul>
+      <div class="callout"><strong>আগে আমাদের পাঠান</strong>কাউকে টাকা দেওয়ার আগে অফার লেটার, ভিসার কপি ও এজেন্সির তথ্য আমাদের পাঠান। আমরা বিনামূল্যে যাচাই করে দেব।</div>
+    </div>
+  </div>
+</section>
+<section class="sec sec--tint">
+  <div class="wrap cols">
+    <div><span class="label"><b>05</b>প্রস্তুতি</span><h2>দক্ষতা ও ভাষা <em>ভালো চাকরির চাবি।</em></h2></div>
+    <div><p class="body-lg">জাপানের SSW-তে JLPT N4 বা JFT-Basic লাগে, কোরিয়ার EPS-এ EPS-TOPIK, আর ইতালির দীর্ঘমেয়াদি পারমিটে ইতালীয় A2। জাপানি, কোরিয়ান, ইতালীয়, জার্মান ও IELTS — সবগুলোতে আমাদের ভাষা পার্টনারশিপ আছে।</p><a class="tlink" href="${root}languages.html">ভাষা কোর্স (ইংরেজি) ${A}</a></div>
+  </div>
+</section>
+${bnCta(root, 'চাকরির অফার পেয়েছেন? <em>আমাদের দিয়ে যাচাই করান।</em>', 'আমরা নিয়োগকর্তা, ভিসা ও এজেন্সি যাচাই করি, এবং টাকা দেওয়ার আগেই পুরো খরচ বুঝিয়ে বলি।')}`;
+  return layout({ lang: 'bn', root, path: 'bn/work-abroad.html', body,
+    title: `বাংলাদেশ থেকে বিদেশে চাকরি: শীর্ষ গন্তব্য ২০২৬ | ${site.name}`,
+    description: 'বাংলাদেশিরা কোথায় কাজ করছেন: সৌদি আরব, কাতার, সিঙ্গাপুর, কুয়েত, মালদ্বীপ, ইতালি ও আরও। কাজের পথ, BMET প্রক্রিয়া এবং রিক্রুটিং প্রতারণা এড়ানোর উপায়।',
+    schema: [{ '@type': 'Article', headline: 'বাংলাদেশ থেকে বিদেশে চাকরি: শীর্ষ গন্তব্য, পথ ও বহির্গমন প্রক্রিয়া', inLanguage: 'bn', dateModified: BUILD_DATE, author: { '@id': `${site.url}/#org` }, publisher: { '@id': `${site.url}/#org` } }] });
+}
+
+function bnContact() {
+  const root = '../';
+  const body = `
+${bnPhead({ root, crumb: BN.ui.contact, label: BN.ui.contact, h1: 'আপনার পরিকল্পনা নিয়ে <em>কথা বলি।</em>', lede: 'ফোন করুন, হোয়াটসঅ্যাপে মেসেজ দিন বা অফিসে আসুন। অথবা তথ্য দিন — একজন পরামর্শদাতা এক কার্যদিবসের মধ্যে যোগাযোগ করবেন।' })}
+<section class="sec sec--flush">
+  <div class="wrap cols">
+    <div>
+      <dl class="contact-dl" style="margin-top:0">
+        <div><dt>${BN.ui.phone}</dt><dd><a href="tel:${tel}">${site.phone}</a></dd></div>
+        <div><dt>${BN.ui.whatsapp}</dt><dd><a href="https://wa.me/${site.whatsapp}" target="_blank" rel="noopener">${site.phone}</a></dd></div>
+        <div><dt>${BN.ui.email}</dt><dd><a href="mailto:${site.email}">${site.email}</a></dd></div>
+        <div><dt>${BN.ui.office}</dt><dd><a href="${site.officeMap}" target="_blank" rel="noopener">${site.office}</a></dd></div>
+        <div><dt>${BN.ui.facebook}</dt><dd><a href="${site.facebook}" target="_blank" rel="noopener">facebook.com/eximobd</a></dd></div>
+      </dl>
+      <div class="callout"><strong>ফি সম্পর্কে</strong>ভিসা, দূতাবাস বা সরকারি ফি কখনো ব্যক্তিগত অ্যাকাউন্টে দিতে বলি না। অফিশিয়াল ফি সরাসরি দূতাবাস, ভিসা সেন্টার বা সরকারকে দেওয়া হয়।</div>
+    </div>
+    ${bnForm()}
+  </div>
+</section>`;
+  return layout({ lang: 'bn', root, path: 'bn/contact.html', body,
+    title: `যোগাযোগ | ${site.name} — হোয়াটসঅ্যাপে বিনামূল্যে পরামর্শ`,
+    description: `ফোন বা হোয়াটসঅ্যাপ করুন ${site.phone}, অথবা আমাদের অফিশিয়াল অফিসে আসুন: Via Francesco Ravaschio 97, জেনোভা, ইতালি। প্রথম পরামর্শ বিনামূল্যে।` });
+}
+
+function bnCountry(slug) {
+  const c = countries.find((x) => x.slug === slug);
+  const d = BN.countriesBn[slug];
+  const name = BN.countryNames[slug];
+  const root = '../../';
+  const primary = 'work';
+  const order = ['work', 'study', 'tourist', 'family', 'medical'];
+  const panels = order.map((k) => {
+    const v = d.visas[k];
+    return `
+<section class="panel" id="${k}" role="tabpanel" aria-labelledby="tab-${k}"${k !== primary ? ' hidden' : ''}>
+  <div class="wrap visa-grid">
+    <div>
+      <span class="label">${BN.visaLabels[k]} · ${name}</span>
+      <h2>${v.name}</h2>
+      <p class="lede">${v.summary}</p>
+      <h3 class="h4" style="margin-bottom:14px">প্রধান শর্তাবলি</h3>
+      <ul class="ticks ticks--num">${v.points.map((p) => `<li>${p}</li>`).join('')}</ul>
+      <div class="callout"><strong>জেনে রাখুন</strong>${v.note}</div>
+    </div>
+    <aside class="aside">
+      <dl><dt>সাধারণ প্রসেসিং সময়</dt><dd>${v.time}</dd></dl>
+      <h3>আমরা যেভাবে সাহায্য করি</h3>
+      <ul class="plain">${BN.help[k].map((h) => `<li>${h}</li>`).join('')}</ul>
+      <a class="btn btn--block" href="${root}bn/contact.html#book">আবেদন শুরু করুন ${A}</a>
+      <a class="btn btn--line btn--block" href="${root}countries/${slug}.html#${k}" lang="en">English version</a>
+    </aside>
+  </div>
+</section>`;
+  }).join('');
+  const facts = `<dl class="facts">${d.facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>`;
+  const body = `
+${bnPhead({ root, crumb: name, label: `${BN.regionsBn[c.region]} · বাংলাদেশি নাগরিকদের ভিসা গাইড`, h1: name, lede: d.intro, extra: facts })}
+<div class="tabs-bar"><div class="wrap"><div class="tabs" role="tablist" aria-label="ভিসার ধরন">
+  ${order.map((k) => `<button class="tab" role="tab" id="tab-${k}" aria-controls="${k}" aria-selected="${k === primary}" data-tab="${k}">${BN.visaLabels[k]}</button>`).join('')}
+</div></div></div>
+${panels}
+<section class="sec sec--sm" style="margin-top:56px">
+  <div class="wrap"><span class="label">অন্যান্য দেশের গাইড</span><div class="others">${Object.keys(BN.countriesBn).filter((s) => s !== slug).map((s) => `<a href="${s}.html">${BN.countryNames[s]}</a>`).join('')}<a href="${root}destinations.html">${BN.ui.allCountriesEn}</a></div></div>
+</section>
+${bnCta(root, `${name} যাওয়ার <em>পরিকল্পনা করছেন?</em>`)}`;
+  return layout({ lang: 'bn', root, path: `bn/countries/${slug}.html`, body,
+    title: `${d.title} | ${site.name}`,
+    description: clip(`${name} যাওয়ার জন্য বাংলাদেশি নাগরিকদের ভিসা গাইড: কাজ, পড়াশোনা, ভ্রমণ, পরিবার ও চিকিৎসা ভিসার শর্ত, কাগজপত্র ও প্রসেসিং সময়।`),
+    schema: [faqSchema(order.map((k) => { const v = d.visas[k]; return [`বাংলাদেশ থেকে ${name}-এর ${BN.visaLabels[k]} ভিসার জন্য কী লাগে?`, `${v.name}: ${v.summary} প্রধান শর্ত: ${v.points.join('; ')}। ${v.note} সাধারণ প্রসেসিং সময়: ${v.time}।`]; }))] });
+}
+
+out('bn/index.html', bnHome());
+out('bn/work-abroad.html', bnWork());
+out('bn/contact.html', bnContact());
+Object.keys(BN.countriesBn).forEach((s) => out(`bn/countries/${s}.html`, bnCountry(s)));
+
 // ---------- SEO & AI files ----------
-const allPaths = [...pages.map(([p]) => p), ...countries.map((c) => `countries/${c.slug}.html`), ...visaTypes.map((v) => `visas/${v.key}.html`)];
-const prio = (p) => (p === 'index.html' ? '1.0' : p.includes('/') ? '0.8' : '0.9');
+const allPaths = [...pages.map(([p]) => p), ...countries.map((c) => `countries/${c.slug}.html`), ...visaTypes.map((v) => `visas/${v.key}.html`), ...Object.values(BN_PAIRS)];
+const prio = (p) => (/(^|\/)index\.html$/.test(p) ? '1.0' : p.split('/').length > 2 || p.startsWith('countries/') || p.startsWith('visas/') ? '0.8' : '0.9');
 out('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${allPaths.map((p) => `  <url><loc>${site.url}/${p === 'index.html' ? '' : p}</loc><lastmod>${BUILD_DATE}</lastmod><priority>${prio(p)}</priority></url>`).join('\n')}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${allPaths.map((p) => `  <url><loc>${pageUrl(p)}</loc>${BN_PAIRS[p] || EN_PAIRS[p] ? `<xhtml:link rel="alternate" hreflang="en" href="${pageUrl(EN_PAIRS[p] || p)}"/><xhtml:link rel="alternate" hreflang="bn" href="${pageUrl(BN_PAIRS[p] || p)}"/>` : ''}<lastmod>${BUILD_DATE}</lastmod><priority>${prio(p)}</priority></url>`).join('\n')}
 </urlset>
 `);
 out('robots.txt', `# Search engines and AI assistants are welcome to read and cite this site.
@@ -841,6 +1152,9 @@ ${countries.map((c) => `- [${c.name}](${site.url}/countries/${c.slug}.html): ${c
 
 ## Contact
 - [Contact and free consultation](${site.url}/contact.html)
+
+## বাংলা (Bangla pages)
+${Object.values(BN_PAIRS).map((p) => `- [${p}](${pageUrl(p)})`).join('\n')}
 `);
 out('404.html', layout({ title: `Page not found | ${site.name}`, description: 'The page you were looking for could not be found.', root: '/', path: '404.html', body: `
 <section class="phead" style="border:0"><div class="wrap"><span class="label">404</span><h1>This page has <em>moved.</em></h1><p class="lede" style="margin:28px 0 36px">The page you were looking for isn’t here. Try one of these instead.</p>
