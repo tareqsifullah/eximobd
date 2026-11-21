@@ -12,3 +12,9 @@ Static site — no framework, no dependencies. Every push to `main` rebuilds and
 - Review visa details in `build/data.mjs` against official sources — rules change often.
 - Add verified language partner institutes to `providers` in `build/data.mjs` (the Languages page lists them automatically).
 - Refresh `workMarkets` (BMET figures and market status) each quarter, and the investment/nomad thresholds at least yearly.
+
+## Domain
+GitHub Pages serves the site at `www.eximobd.com` (set under repo Settings → Pages). DNS is managed in the Namecheap hosting cPanel (Zone Editor):
+- `www` → CNAME `tareqsifullah.github.io`
+- `eximobd.com` → A `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
+- Leave MX / mail / TXT records unchanged (email runs on Namecheap hosting).
