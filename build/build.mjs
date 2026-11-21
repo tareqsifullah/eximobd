@@ -1,5 +1,5 @@
 // Static site generator for Eximo. Usage: node build/build.mjs
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -11,6 +11,7 @@ const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'site');
 const year = new Date().getFullYear();
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const tel = site.phone.replace(/[^+\d]/g, '');
+const clip = (s, n = 155) => (s.length <= n ? s : s.slice(0, s.lastIndexOf(' ', n - 1)).replace(/[,;:—-]$/, '') + '…');
 const A = '<span class="arr" aria-hidden="true">→</span>';
 const regions = [
   ['Europe', 'Europe'],
@@ -36,11 +37,51 @@ const studyLinks = [
   ['career-counselling.html', 'Career counselling', 'Choose the course for the career'],
 ];
 
+const BUILD_DATE = new Date().toISOString().slice(0, 10);
+const faqSchema = (pairs) => ({ '@type': 'FAQPage', mainEntity: pairs.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) });
+
 // ---------- layout ----------
-function layout({ title, description, root, active = '', body, path }) {
+// Organisation entity shared by every page (helps Google and AI assistants identify the business)
+const orgSchema = {
+  '@type': 'ProfessionalService',
+  '@id': `${site.url}/#org`,
+  name: site.legal,
+  alternateName: site.name,
+  url: `${site.url}/`,
+  logo: `${site.url}/assets/img/logo-512.png`,
+  image: `${site.url}/assets/img/logo-512.png`,
+  description: 'Study abroad, work visa, skilled migration, residency and language-course advisory for students, workers and professionals from Bangladesh.',
+  telephone: site.phone.replace(/[^+\d]/g, ''),
+  email: site.email,
+  address: { '@type': 'PostalAddress', streetAddress: 'Via Francesco Ravaschio 97', addressLocality: 'Genova', addressRegion: 'Liguria', addressCountry: 'IT' },
+  areaServed: [{ '@type': 'Country', name: 'Bangladesh' }, { '@type': 'Country', name: 'Italy' }],
+  sameAs: [site.facebook],
+  contactPoint: { '@type': 'ContactPoint', telephone: site.phone.replace(/[^+\d]/g, ''), contactType: 'customer service', availableLanguage: ['English', 'Bengali', 'Italian'] },
+};
+const crumbNames = {
+  'destinations.html': 'Destinations', 'work-abroad.html': 'Work abroad', 'skilled-migration.html': 'Skilled migration',
+  'digital-nomad.html': 'Digital nomad visas', 'residency-citizenship.html': 'Residency & second citizenship', 'languages.html': 'Language courses',
+  'scholarships.html': 'Scholarships', 'career-counselling.html': 'Career counselling', 'about.html': 'About', 'contact.html': 'Contact',
+};
+function breadcrumbSchema(path) {
+  if (path === 'index.html') return null;
+  const items = [['Home', '']];
+  const [dir, file] = path.includes('/') ? path.split('/') : [null, path];
+  if (dir === 'countries') items.push(['Destinations', 'destinations.html'], [countries.find((c) => `${c.slug}.html` === file).name, path]);
+  else if (dir === 'visas') items.push([visaTypes.find((v) => `${v.key}.html` === file).title, path]);
+  else if (crumbNames[path]) items.push([crumbNames[path], path]);
+  return { '@type': 'BreadcrumbList', itemListElement: items.map(([name, p], i) => ({ '@type': 'ListItem', position: i + 1, name, item: `${site.url}/${p}` })) };
+}
+const STYLE = readFileSync(join(OUT, 'assets/css/style.css'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{}:;,>])\s*/g, '$1').replace(/;}/g, '}').trim();
+
+function layout({ title, description, root, active = '', body, path, schema = [] }) {
   const ddLinks = (list) => list.map(([h, t, s]) => `<a href="${root}${h}">${t}<small>${s}</small></a>`).join('');
-  const dest = regions.map(([r, label]) => `<div><h5>${label}</h5>${byRegion(r).map((c) => `<a href="${root}countries/${c.slug}.html">${c.name}</a>`).join('')}</div>`).join('');
+  const dest = regions.map(([r, label]) => `<div><p class="f-h">${label}</p>${byRegion(r).map((c) => `<a href="${root}countries/${c.slug}.html">${c.name}</a>`).join('')}</div>`).join('');
   const act = (k) => (active === k ? ' is-active' : '');
+  const url = path === 'index.html' ? `${site.url}/` : `${site.url}/${path}`;
+  const graph = [orgSchema, breadcrumbSchema(path), ...schema].filter(Boolean);
+  const css = STYLE.replace(/url\(\.\.\/fonts\//g, `url(${root}assets/fonts/`);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -48,24 +89,32 @@ function layout({ title, description, root, active = '', body, path }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
-<link rel="canonical" href="${site.url}/${path}">
+<link rel="canonical" href="${url}">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta property="og:site_name" content="${site.name}">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="${url}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:type" content="website">
-<meta property="og:image" content="${site.url}/assets/img/logo.jpg">
+<meta property="og:image" content="${site.url}/assets/img/logo-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#faf8f3">
-<link rel="icon" href="${root}assets/img/logo.jpg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="${root}assets/css/style.css">
+${site.gscVerification ? `<meta name="google-site-verification" content="${site.gscVerification}">\n` : ''}<link rel="icon" type="image/png" sizes="32x32" href="${root}assets/img/favicon-32.png">
+<link rel="apple-touch-icon" href="${root}assets/img/apple-touch-icon.png">
+<link rel="preload" href="${root}assets/fonts/newsreader-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="${root}assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>${css}</style>
 <script>document.documentElement.classList.add('js')</script>
-</head>
+<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': graph })}</script>
+${site.ga4 ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${site.ga4}"></script>\n<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${site.ga4}');</script>\n` : ''}</head>
 <body>
 <a class="sr-only" href="#main">Skip to content</a>
 <header class="header">
   <div class="wrap">
-    <a class="brand" href="${root}index.html" aria-label="${site.name} home"><img src="${root}assets/img/logo.jpg" alt="" width="34" height="34"><span>${site.name}</span></a>
+    <a class="brand" href="${root}index.html" aria-label="${site.name} home"><img src="${root}assets/img/logo-68.jpg" alt="" width="34" height="34"><span>${site.name}</span></a>
     <nav class="nav" aria-label="Main">
       <div class="nav-item${act('destinations')}"><button type="button">Destinations</button><div class="dd dd--dest">${dest}<div class="dd-foot"><a href="${root}destinations.html">Compare all destinations ${A}</a></div></div></div>
       <div class="nav-item${act('visas')}"><button type="button">Visas</button><div class="dd">${visaTypes.map((v) => `<a href="${root}visas/${v.key}.html">${v.title}<small>${v.short}</small></a>`).join('')}</div></div>
@@ -80,7 +129,7 @@ function layout({ title, description, root, active = '', body, path }) {
 </header>
 <div class="drawer" id="drawer" aria-hidden="true">
   <div class="wrap">
-    <div class="drawer-top"><a class="brand" href="${root}index.html"><img src="${root}assets/img/logo.jpg" alt="" width="34" height="34"><span>${site.name}</span></a><button class="menu-btn" style="display:inline-block;margin:0" type="button" data-drawer-close>Close</button></div>
+    <div class="drawer-top"><a class="brand" href="${root}index.html"><img src="${root}assets/img/logo-68.jpg" alt="" width="34" height="34"><span>${site.name}</span></a><button class="menu-btn" style="display:inline-block;margin:0" type="button" data-drawer-close>Close</button></div>
     <details><summary>Destinations</summary><div class="d-sub">${countries.map((c) => `<a href="${root}countries/${c.slug}.html">${c.name}</a>`).join('')}</div></details>
     <details><summary>Visas</summary><div class="d-sub">${visaTypes.map((v) => `<a href="${root}visas/${v.key}.html">${v.title}</a>`).join('')}</div></details>
     <a class="d-link" href="${root}work-abroad.html">Work abroad</a>
@@ -98,13 +147,13 @@ ${body}
   <div class="wrap">
     <div class="footer-grid">
       <div class="footer-about">
-        <a class="brand" href="${root}index.html"><img src="${root}assets/img/logo.jpg" alt="" width="34" height="34"><span>${site.name}</span></a>
+        <a class="brand" href="${root}index.html"><img src="${root}assets/img/logo-68.jpg" alt="" width="34" height="34"><span>${site.name}</span></a>
         <p>Independent advice on studying, working and settling abroad — for students, workers and professionals from Bangladesh.</p>
       </div>
-      <div><h5>Visas</h5><ul>${visaTypes.map((v) => `<li><a href="${root}visas/${v.key}.html">${v.label}</a></li>`).join('')}</ul></div>
-      <div><h5>Services</h5><ul><li><a href="${root}work-abroad.html">Work abroad</a></li>${migrationLinks.concat(studyLinks).map(([h, t]) => `<li><a href="${root}${h}">${t}</a></li>`).join('')}</ul></div>
-      <div><h5>Destinations</h5><ul>${['uk', 'canada', 'australia', 'germany', 'saudi-arabia', 'japan', 'malaysia'].map((s) => countries.find((c) => c.slug === s)).map((c) => `<li><a href="${root}countries/${c.slug}.html">${c.name}</a></li>`).join('')}<li><a href="${root}destinations.html">All destinations</a></li></ul></div>
-      <div><h5>Contact</h5><ul>
+      <div><p class="f-h">Visas</p><ul>${visaTypes.map((v) => `<li><a href="${root}visas/${v.key}.html">${v.label}</a></li>`).join('')}</ul></div>
+      <div><p class="f-h">Services</p><ul><li><a href="${root}work-abroad.html">Work abroad</a></li>${migrationLinks.concat(studyLinks).map(([h, t]) => `<li><a href="${root}${h}">${t}</a></li>`).join('')}</ul></div>
+      <div><p class="f-h">Destinations</p><ul>${['uk', 'canada', 'australia', 'germany', 'saudi-arabia', 'japan', 'malaysia'].map((s) => countries.find((c) => c.slug === s)).map((c) => `<li><a href="${root}countries/${c.slug}.html">${c.name}</a></li>`).join('')}<li><a href="${root}destinations.html">All destinations</a></li></ul></div>
+      <div><p class="f-h">Contact</p><ul>
         <li><a href="tel:${tel}">${site.phone}</a></li>
         <li><a href="https://wa.me/${site.whatsapp}" target="_blank" rel="noopener">WhatsApp</a></li>
         <li><a href="mailto:${site.email}">${site.email}</a></li>
@@ -119,8 +168,8 @@ ${body}
     </div>
   </div>
 </footer>
-<script src="${root}assets/js/data.js"></script>
-<script src="${root}assets/js/main.js"></script>
+<script defer src="${root}assets/js/data.js"></script>
+<script defer src="${root}assets/js/main.js"></script>
 </body>
 </html>`;
 }
@@ -132,7 +181,7 @@ const phead = ({ root, crumbs, label, h1, lede, extra = '' }) => `
     <nav class="crumbs" aria-label="Breadcrumb"><a href="${root}index.html">Home</a>${crumbs.map((c) => `<span aria-hidden="true">/</span>${c}`).join('')}</nav>
     <div class="phead-grid">
       <div><span class="label">${label}</span><h1>${h1}</h1></div>
-      <p class="lede">${lede}</p>
+      <div><p class="lede">${lede}</p><p class="small" style="margin:18px 0 0">Last reviewed: ${site.reviewed}</p></div>
     </div>
     ${extra}
   </div>
@@ -140,7 +189,7 @@ const phead = ({ root, crumbs, label, h1, lede, extra = '' }) => `
 
 const head = (n, label, h2, p = '') => `<div class="head"><div><span class="label"><b>${n}</b>${label}</span><h2>${h2}</h2></div>${p ? `<p class="body-lg">${p}</p>` : ''}</div>`;
 
-const steps = (items, row = false) => `<ol class="steps${row ? ' steps--row' : ''}">${items.map(([t, d]) => `<li><div><h4>${t}</h4>${d ? `<p>${d}</p>` : ''}</div></li>`).join('')}</ol>`;
+const steps = (items, row = false) => `<ol class="steps${row ? ' steps--row' : ''}">${items.map(([t, d]) => `<li><div><h3>${t}</h3>${d ? `<p>${d}</p>` : ''}</div></li>`).join('')}</ol>`;
 
 const cta = (root, h = 'Not sure which route <em>fits you?</em>', p = 'Book a consultation. We review your profile and give you a straight answer — including when the honest answer is “not yet”.') => `
 <section class="cta">
@@ -164,16 +213,16 @@ const marketTable = (root, rows) => `
 
 const consultForm = (id = 'book') => `
 <div id="${id}">
-  <form class="form" data-form novalidate>
+  <form class="form" data-form data-wa="${site.whatsapp}" novalidate>
     <div class="fld"><label for="f-name">Full name</label><input class="in" id="f-name" name="name" required autocomplete="name"></div>
     <div class="fld"><label for="f-phone">Phone / WhatsApp</label><input class="in" id="f-phone" name="phone" type="tel" required autocomplete="tel"></div>
     <div class="fld full"><label for="f-email">Email</label><input class="in" id="f-email" name="email" type="email" autocomplete="email"></div>
     <div class="fld"><label for="f-goal">Interested in</label><select class="in" id="f-goal" name="goal">${visaTypes.map((v) => `<option>${v.title}</option>`).join('')}<option>Work abroad</option><option>Skilled migration</option><option>Digital nomad visa</option><option>Residency / second citizenship</option><option>Language course</option><option>Scholarships</option><option>Career counselling</option></select></div>
     <div class="fld"><label for="f-country">Destination</label><select class="in" id="f-country" name="country"><option>Not decided</option>${countries.map((c) => `<option>${c.name}</option>`).join('')}</select></div>
     <div class="fld full"><label for="f-msg">Your background (optional)</label><textarea class="in" id="f-msg" name="message" placeholder="e.g. BSc in Civil Engineering, 4 years’ experience, IELTS 7.0"></textarea></div>
-    <div class="full"><button class="btn" type="submit">Request a call back ${A}</button><p class="small" style="margin-top:14px">We reply within one working day and use your details only to respond to you.</p></div>
+    <div class="full"><button class="btn" type="submit">Send via WhatsApp ${A}</button><p class="small" style="margin-top:14px">Opens WhatsApp with your details filled in. We use them only to respond to you.</p></div>
   </form>
-  <div class="form-done" aria-live="polite"><h3>Thank you.</h3><p class="muted" style="margin-top:10px">An advisor will contact you within one working day.</p></div>
+  <div class="form-done" aria-live="polite"><h3>Almost done — press send in WhatsApp.</h3><p class="muted" style="margin-top:10px">Your details are ready in a WhatsApp message to our advisors. If it didn’t open, <a class="tlink" href="https://wa.me/${site.whatsapp}" target="_blank" rel="noopener">open WhatsApp</a>.</p></div>
 </div>`;
 
 const compareTool = () => `
@@ -191,7 +240,7 @@ const compareTool = () => `
   <div><div class="results" data-results aria-live="polite"></div><p class="source">Indicative only, based on typical costs and entry requirements. Your advisor confirms options for your profile.</p></div>
 </div>`;
 
-const directory = (root) => `<div class="directory">${regions.map(([r, label]) => `<div><h4>${label}</h4>${byRegion(r).map((c) => `<a href="${root}countries/${c.slug}.html">${c.name}<small>${c.primary === 'work' ? 'Work' : c.primary === 'medical' ? 'Medical' : 'Study'}</small></a>`).join('')}</div>`).join('')}</div>`;
+const directory = (root) => `<div class="directory">${regions.map(([r, label]) => `<div><h3>${label}</h3>${byRegion(r).map((c) => `<a href="${root}countries/${c.slug}.html">${c.name}<small>${c.primary === 'work' ? 'Work' : c.primary === 'medical' ? 'Medical' : 'Study'}</small></a>`).join('')}</div>`).join('')}</div>`;
 
 const workerHelp = [
   'Agency licence, employer and visa verification before you pay',
@@ -304,7 +353,7 @@ function home() {
     ${consultForm()}
   </div>
 </section>`;
-  return layout({ title: `${site.name} — Study, work & migration advisory`, description: `Advice for Bangladeshi students, workers and professionals: study, work, tourist, family and medical visas for ${countries.length} countries, skilled migration, digital nomad visas, residency by investment and language courses.`, root, body, path: 'index.html' });
+  return layout({ title: `${site.name} | Study Abroad, Work Visa & Migration Consultancy`, description: `Study abroad, work visas, skilled migration and second residency for Bangladeshi students, workers and professionals. ${countries.length} countries, five visa types. Free consultation.`, root, body, path: 'index.html', schema: [{ '@type': 'WebSite', '@id': `${site.url}/#website`, url: `${site.url}/`, name: site.name, publisher: { '@id': `${site.url}/#org` }, inLanguage: 'en' }, faqSchema(faqs)] });
 }
 
 function countryPage(c) {
@@ -319,13 +368,13 @@ function countryPage(c) {
       <span class="label">${vt.label} · ${c.name}</span>
       <h2>${v.name}</h2>
       <p class="lede">${v.summary}</p>
-      <h4 style="margin-bottom:14px">Key requirements</h4>
+      <h3 class="h4" style="margin-bottom:14px">Key requirements</h3>
       <ul class="ticks ticks--num">${v.points.map((p) => `<li>${p}</li>`).join('')}</ul>
       <div class="callout"><strong>Good to know</strong>${v.note}</div>
     </div>
     <aside class="aside">
       <dl><dt>Typical processing</dt><dd>${v.time}</dd></dl>
-      <h4>How we help</h4>
+      <h3>How we help</h3>
       <ul class="plain">${(vt.key === 'work' && c.study === false ? workerHelp : vt.help.slice(0, 4)).map((h) => `<li>${h}</li>`).join('')}</ul>
       <a class="btn btn--block" href="${root}contact.html#book">Start my application ${A}</a>
       <a class="btn btn--line btn--block" href="${root}visas/${vt.key}.html">Compare ${vt.label.toLowerCase()} visas</a>
@@ -335,7 +384,7 @@ function countryPage(c) {
   }).join('');
   const facts = `<dl class="facts">${factsOf(c).map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>`;
   const body = `
-${phead({ root, crumbs: [`<a href="${root}destinations.html">Destinations</a>`, `<span>${c.name}</span>`], label: regions.find(([r]) => r === c.region)[1], h1: c.name, lede: c.intro, extra: facts })}
+${phead({ root, crumbs: [`<a href="${root}destinations.html">Destinations</a>`, `<span>${c.name}</span>`], label: `${regions.find(([r]) => r === c.region)[1]} · Visa guide for Bangladeshi nationals`, h1: c.name, lede: c.intro, extra: facts })}
 <div class="tabs-bar"><div class="wrap"><div class="tabs" role="tablist" aria-label="Visa types">
   ${visaTypes.map((vt) => `<button class="tab" role="tab" id="tab-${vt.key}" aria-controls="${vt.key}" aria-selected="${vt.key === primary}" data-tab="${vt.key}">${vt.label}</button>`).join('')}
 </div></div></div>
@@ -345,7 +394,7 @@ ${c.slug === 'italy' ? `<section class="sec sec--sm sec--tint"><div class="wrap 
   <div class="wrap"><span class="label">Other destinations</span><div class="others">${countries.filter((o) => o.slug !== c.slug).map((o) => `<a href="${o.slug}.html">${o.name}</a>`).join('')}</div></div>
 </section>
 ${cta(root, `Planning a move to <em>${c.name}?</em>`)}`;
-  return layout({ title: `${c.name} — study, work, tourist, family & medical visas | ${site.name}`, description: `${c.name} visa guidance for Bangladeshi nationals: ${visaTypes.map((v) => c.visas[v.key].name).join(', ')}.`, root, active: 'destinations', body, path: `countries/${c.slug}.html` });
+  return layout({ title: `${c.name} Visa from Bangladesh: ${visaTypes.find((v) => v.key === (c.primary || 'study')).label} & More | ${site.name}`, description: clip(`${c.name} visa guide for Bangladeshi nationals: ${c.visas[c.primary || 'study'].name}, plus study, work, tourist, family and medical visa requirements and processing times.`), root, active: 'destinations', body, path: `countries/${c.slug}.html`, schema: [faqSchema(visaTypes.map((vt) => { const v = c.visas[vt.key]; return [`What do I need for a ${c.name} ${vt.label.toLowerCase()} visa from Bangladesh?`, `${v.name}: ${v.summary} Key requirements: ${v.points.join('; ')}. ${v.note} Typical processing: ${v.time}.`]; }))] });
 }
 
 function visaPage(vt) {
@@ -371,7 +420,7 @@ ${phead({ root, crumbs: ['<span>Visas</span>', `<span>${vt.title}</span>`], labe
   </div>
 </section>
 ${cta(root)}`;
-  return layout({ title: `${vt.title} by country | ${site.name}`, description: vt.intro.slice(0, 155), root, active: 'visas', body, path: `visas/${vt.key}.html` });
+  return layout({ title: `${vt.label} Visa from Bangladesh: ${countries.length} Countries Compared | ${site.name}`, description: clip(`${vt.title} for Bangladeshi nationals in ${countries.length} countries. ${vt.intro}`), root, active: 'visas', body, path: `visas/${vt.key}.html`, schema: [{ '@type': 'ItemList', name: `${vt.title} by country`, itemListElement: countries.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: `${c.name}: ${c.visas[vt.key].name}`, url: `${site.url}/countries/${c.slug}.html` })) }] });
 }
 
 function destinationsPage() {
@@ -393,7 +442,7 @@ ${phead({ root, crumbs: ['<span>Destinations</span>'], label: 'Destinations', h1
   </div>
 </section>
 ${cta(root)}`;
-  return layout({ title: `Destinations | ${site.name}`, description: `Compare ${countries.length} destinations for study, work and migration from Bangladesh.`, root, active: 'destinations', body, path: 'destinations.html' });
+  return layout({ title: `Best Countries to Study & Work from Bangladesh | ${site.name}`, description: `Compare ${countries.length} destinations for Bangladeshi students and workers: costs, IELTS requirements, intakes, post-study work and residence pathways.`, root, active: 'destinations', body, path: 'destinations.html' });
 }
 
 function workPage() {
@@ -442,7 +491,7 @@ ${phead({ root, crumbs: ['<span>Work abroad</span>'], label: 'Overseas employmen
   </div>
 </section>
 ${cta(root, 'Have a job offer? <em>Let us check it.</em>', 'We verify the employer, visa and agency, and explain the full cost before you pay anything.')}`;
-  return layout({ title: `Work abroad — top destinations for Bangladeshi workers | ${site.name}`, description: 'Where Bangladeshis are working abroad: Saudi Arabia, Qatar, Singapore, Kuwait, Maldives and more. Routes, departure process and how to avoid recruitment fraud.', root, active: 'work', body, path: 'work-abroad.html' });
+  return layout({ title: `Work Abroad from Bangladesh: Top Destinations 2026 | ${site.name}`, description: 'Where Bangladeshis work abroad: Saudi Arabia, Qatar, Singapore, Kuwait, Maldives, Italy and more. Routes, BMET process and how to avoid recruitment fraud.', root, active: 'work', body, path: 'work-abroad.html', schema: [{ '@type': 'Article', headline: 'Work abroad from Bangladesh: top destinations, routes and departure process', dateModified: BUILD_DATE, author: { '@id': `${site.url}/#org` }, publisher: { '@id': `${site.url}/#org` } }] });
 }
 
 function skilledPage() {
@@ -479,7 +528,7 @@ ${phead({ root, crumbs: ['<span>Migration</span>', '<span>Skilled migration</spa
   </div>
 </section>
 ${cta(root, 'How many points <em>do you have?</em>', 'Send us your CV and test scores. We will score you against each programme and tell you which is realistic.')}`;
-  return layout({ title: `Skilled migration | ${site.name}`, description: 'Skilled migration for Bangladeshi professionals: Canada Express Entry, Australia 189/190/491, New Zealand SMC, UK, Germany and Ireland.', root, active: 'migration', body, path: 'skilled-migration.html' });
+  return layout({ title: `Skilled Migration from Bangladesh: Canada & Australia PR | ${site.name}`, description: 'Permanent residence for Bangladeshi professionals: Canada Express Entry, Australia 189/190/491, New Zealand, UK, Germany and Ireland — points and applications.', root, active: 'migration', body, path: 'skilled-migration.html' });
 }
 
 function nomadPage() {
@@ -507,7 +556,7 @@ ${phead({ root, crumbs: ['<span>Migration</span>', '<span>Digital nomad visas</s
   </div>
 </section>
 ${cta(root, 'Freelancer or remote employee? <em>Let’s find your base.</em>')}`;
-  return layout({ title: `Digital nomad visas for Bangladeshi nationals | ${site.name}`, description: 'Digital nomad and remote-work visas for Bangladeshi freelancers and remote employees: Thailand DTV, Malaysia DE Rantau, Dubai, Indonesia, Spain and Portugal.', root, active: 'migration', body, path: 'digital-nomad.html' });
+  return layout({ title: `Digital Nomad Visas for Bangladeshi Citizens | ${site.name}`, description: 'Remote-work visas open to Bangladeshi freelancers and remote employees: Thailand DTV, Malaysia DE Rantau, Dubai, Indonesia, Spain and Portugal compared.', root, active: 'migration', body, path: 'digital-nomad.html' });
 }
 
 function citizenshipPage() {
@@ -570,7 +619,7 @@ ${phead({ root, crumbs: ['<span>Migration</span>', '<span>Residency & second cit
   </div>
 </section>
 ${cta(root, 'Considering a <em>second residence?</em>', 'Book a confidential consultation. We review your situation and introduce you to the right licensed lawyer.')}`;
-  return layout({ title: `Residency & second citizenship | ${site.name}`, description: 'Citizenship and residency by investment for Bangladeshi nationals, with licensed partner lawyers: Caribbean programmes, Türkiye, UAE Golden Visa, Greece, Portugal and Malaysia MM2H.', root, active: 'migration', body, path: 'residency-citizenship.html' });
+  return layout({ title: `Second Passport & Residency by Investment for Bangladeshis | ${site.name}`, description: 'Citizenship and residency by investment for Bangladeshi nationals with licensed partner lawyers: Caribbean, Türkiye, UAE Golden Visa, Greece, Portugal, MM2H.', root, active: 'migration', body, path: 'residency-citizenship.html' });
 }
 
 function languagesPage() {
@@ -612,7 +661,7 @@ ${phead({ root, crumbs: ['<span>Study</span>', '<span>Language courses</span>'],
   </div>
 </section>
 ${cta(root, 'Which language, <em>which level?</em>', 'Tell us your destination and goal. We will tell you the score you need and how long it should take.')}`;
-  return layout({ title: `Language courses | ${site.name}`, description: 'IELTS, German, Japanese (JLPT/JFT), Korean (EPS-TOPIK), and Italian courses through Eximo’s partner institutes.', root, active: 'study', body, path: 'languages.html' });
+  return layout({ title: `IELTS, German, Japanese, Korean & Italian Courses | ${site.name}`, description: 'Language courses for study, work and migration abroad: IELTS, German, Japanese (JLPT/JFT), Korean (EPS-TOPIK) and Italian, through our partner institutes.', root, active: 'study', body, path: 'languages.html', schema: languageCourses.map((l) => ({ '@type': 'Course', name: `${l.lang}: ${l.course}`, description: `${l.levels}. Exam: ${l.exam}. For: ${l.for}.`, provider: { '@id': `${site.url}/#org` } })) });
 }
 
 function scholarshipsPage() {
@@ -651,7 +700,7 @@ ${phead({ root, crumbs: ['<span>Study</span>', '<span>Scholarships</span>'], lab
   </div>
 </section>
 ${cta(root, 'Which scholarships <em>fit you?</em>', 'Share your transcripts and scores. We will send you a shortlist of awards and deadlines.')}`;
-  return layout({ title: `Scholarships | ${site.name}`, description: 'Scholarship matching and essay review for Chevening, DAAD, MEXT, GKS, Australia Awards, DSU Italy and university awards.', root, active: 'study', body, path: 'scholarships.html' });
+  return layout({ title: `Scholarships for Bangladeshi Students to Study Abroad | ${site.name}`, description: 'Funded scholarships for Bangladeshi students: Chevening, DAAD, MEXT, GKS, Australia Awards, Fulbright and Italy DSU, with matching and essay review.', root, active: 'study', body, path: 'scholarships.html' });
 }
 
 function careerPage() {
@@ -676,7 +725,7 @@ ${phead({ root, crumbs: ['<span>Study</span>', '<span>Career counselling</span>'
   ], true)}</div>
 </section>
 ${cta(root, 'Get a plan, <em>not just a visa.</em>')}`;
-  return layout({ title: `Career counselling | ${site.name}`, description: 'Career counselling for students and professionals planning study or work abroad.', root, active: 'study', body, path: 'career-counselling.html' });
+  return layout({ title: `Career Counselling for Study & Work Abroad | ${site.name}`, description: 'Career counselling for Bangladeshi students and professionals: choose the course, country and visa route that leads to the career you want.', root, active: 'study', body, path: 'career-counselling.html' });
 }
 
 function aboutPage() {
@@ -687,12 +736,12 @@ ${phead({ root, crumbs: ['<span>About</span>'], label: `About ${site.name}`, h1:
   <div class="wrap cols">
     <div><span class="label">What we believe</span><h2>Good advice sometimes <em>means “not yet”.</em></h2></div>
     <div><p class="lede">Moving abroad is one of the largest financial decisions a family makes. We would rather tell you to improve your IELTS score, wait an intake or walk away from a doubtful job offer than submit an application we don’t believe in.</p>
-      <div class="grid-2" style="margin-top:48px"><div><h4>Honest</h4><p class="muted">Clear eligibility assessments and written fees before you commit.</p></div><div><h4>Thorough</h4><p class="muted">Every document checked against current rules.</p></div><div><h4>Personal</h4><p class="muted">One advisor from start to finish.</p></div><div><h4>Partnered</h4><p class="muted">Verified language institutes and licensed lawyers abroad.</p></div></div>
+      <div class="grid-2" style="margin-top:48px"><div><h3 class="h4">Honest</h3><p class="muted">Clear eligibility assessments and written fees before you commit.</p></div><div><h3 class="h4">Thorough</h3><p class="muted">Every document checked against current rules.</p></div><div><h3 class="h4">Personal</h3><p class="muted">One advisor from start to finish.</p></div><div><h3 class="h4">Partnered</h3><p class="muted">Verified language institutes and licensed lawyers abroad.</p></div></div>
     </div>
   </div>
 </section>
 ${cta(root)}`;
-  return layout({ title: `About | ${site.name}`, description: `About ${site.name}: study, work and migration advisory in Bangladesh.`, root, body, path: 'about.html' });
+  return layout({ title: `About ${site.name} | Study, Work & Migration Advisory`, description: `${site.name} is a study, work and migration advisory with its official office in Genova, Italy, serving students, workers and professionals from Bangladesh.`, root, body, path: 'about.html' });
 }
 
 function contactPage() {
@@ -714,7 +763,7 @@ ${phead({ root, crumbs: ['<span>Contact</span>'], label: 'Contact', h1: 'Let’s
     ${consultForm()}
   </div>
 </section>`;
-  return layout({ title: `Contact | ${site.name}`, description: `Contact ${site.name} for a consultation.`, root, active: 'contact', body, path: 'contact.html' });
+  return layout({ title: `Contact ${site.name} | Free Consultation on WhatsApp`, description: `Call or WhatsApp ${site.phone}, or visit our official office at Via Francesco Ravaschio 97, Genova, Italy. Your first consultation is free.`, root, active: 'contact', body, path: 'contact.html' });
 }
 
 // ---------- write ----------
@@ -732,6 +781,70 @@ const pages = [
 pages.forEach(([p, fn]) => out(p, fn()));
 countries.forEach((c) => out(`countries/${c.slug}.html`, countryPage(c)));
 visaTypes.forEach((v) => out(`visas/${v.key}.html`, visaPage(v)));
+
+
+// ---------- SEO & AI files ----------
+const allPaths = [...pages.map(([p]) => p), ...countries.map((c) => `countries/${c.slug}.html`), ...visaTypes.map((v) => `visas/${v.key}.html`)];
+const prio = (p) => (p === 'index.html' ? '1.0' : p.includes('/') ? '0.8' : '0.9');
+out('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allPaths.map((p) => `  <url><loc>${site.url}/${p === 'index.html' ? '' : p}</loc><lastmod>${BUILD_DATE}</lastmod><priority>${prio(p)}</priority></url>`).join('\n')}
+</urlset>
+`);
+out('robots.txt', `# Search engines and AI assistants are welcome to read and cite this site.
+User-agent: *
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: ${site.url}/sitemap.xml
+`);
+out('llms.txt', `# ${site.legal}
+
+> ${orgSchema.description} Official office: ${site.office}. Phone / WhatsApp: ${site.phone}. Facebook: ${site.facebook}. Information last reviewed ${site.reviewed}.
+
+Eximo advises Bangladeshi nationals on study, work, tourist, family and medical visas for ${countries.length} countries, overseas employment, skilled migration, digital nomad visas, residency and citizenship by investment (with licensed partner lawyers), and language courses (IELTS, German, Japanese, Korean, Italian) through partner institutes. Visa decisions are made only by governments; overseas employment is processed through BMET-licensed recruiting agencies.
+
+## Services
+- [Work abroad from Bangladesh](${site.url}/work-abroad.html): largest destinations for Bangladeshi workers (2025 BMET data), routes, departure process, fraud warnings
+- [Skilled migration](${site.url}/skilled-migration.html): Canada Express Entry, Australia 189/190/491, New Zealand, UK, Germany, Ireland
+- [Digital nomad visas](${site.url}/digital-nomad.html): remote-work visas open to Bangladeshi applicants
+- [Residency & second citizenship](${site.url}/residency-citizenship.html): investment programmes and rules for Bangladeshi nationals
+- [Language courses](${site.url}/languages.html): IELTS, German, Japanese, Korean, Italian
+- [Scholarships](${site.url}/scholarships.html): funded study abroad for Bangladeshi students
+- [All destinations compared](${site.url}/destinations.html)
+
+## Visa types
+${visaTypes.map((v) => `- [${v.title} from Bangladesh](${site.url}/visas/${v.key}.html): ${v.short}`).join('\n')}
+
+## Country guides
+${countries.map((c) => `- [${c.name}](${site.url}/countries/${c.slug}.html): ${c.tagline}`).join('\n')}
+
+## Contact
+- [Contact and free consultation](${site.url}/contact.html)
+`);
+out('404.html', layout({ title: `Page not found | ${site.name}`, description: 'The page you were looking for could not be found.', root: '/', path: '404.html', body: `
+<section class="phead" style="border:0"><div class="wrap"><span class="label">404</span><h1>This page has <em>moved.</em></h1><p class="lede" style="margin:28px 0 36px">The page you were looking for isn’t here. Try one of these instead.</p>
+<div class="hero-actions"><a class="btn" href="/">Home ${A}</a><a class="btn btn--line" href="/destinations.html">Destinations</a><a class="btn btn--line" href="/contact.html">Contact</a></div></div></section>` }).replace('<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">', '<meta name="robots" content="noindex">'));
 
 const clientData = {
   countries: countries.map((c) => ({

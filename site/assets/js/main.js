@@ -90,7 +90,7 @@
       out.innerHTML = list.map(function (r, i) {
         var text = cap(r.pros.slice(0, 3).join(' · ') || '—');
         if (r.cons.length) text += ' · <span class="neg">' + r.cons.slice(0, 2).join(' · ') + '</span>';
-        return '<a class="result" href="' + root + 'countries/' + r.c.slug + '.html#' + key + '"><span class="rk">' + (i + 1) + '</span><div><h4>' + r.c.name + '</h4><p>' + text + '</p></div><div class="pct">' + r.pct + '%<small>match</small></div></a>';
+        return '<a class="result" href="' + root + 'countries/' + r.c.slug + '.html#' + key + '"><span class="rk">' + (i + 1) + '</span><div><h3>' + r.c.name + '</h3><p>' + text + '</p></div><div class="pct">' + r.pct + '%<small>match</small></div></a>';
       }).join('');
     }
     render();
@@ -138,17 +138,44 @@
     }
   }
 
-  // Forms — set data-endpoint on the <form> (e.g. Formspree URL) to send submissions.
+  // Conversion tracking: events go to GA4 / Google Ads when gtag is configured, and to dataLayer for GTM.
+  function track(name, params) {
+    params = params || {};
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(Object.assign({ event: name }, params));
+    if (typeof window.gtag === 'function') window.gtag('event', name, params);
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a) return;
+    var h = a.getAttribute('href');
+    if (/wa\.me\//.test(h)) track('whatsapp_click', { link_location: location.pathname });
+    else if (/^tel:/.test(h)) track('phone_click', { link_location: location.pathname });
+    else if (/^mailto:/.test(h)) track('email_click', { link_location: location.pathname });
+    else if (/contact\.html#book/.test(h)) track('book_consultation_click', { link_location: location.pathname });
+  });
+
+  // Forms: the enquiry opens in WhatsApp, pre-filled, so it reaches an advisor without a mail server.
+  // Optionally set data-endpoint on the <form> (e.g. a Formspree URL) to also store submissions.
   $$('[data-form]').forEach(function (form) {
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var req = $$('[required]', form), bad = req.filter(function (i) { return !i.value.trim(); });
       req.forEach(function (i) { i.classList.toggle('is-bad', bad.indexOf(i) > -1); });
       if (bad.length) { bad[0].focus(); return; }
-      var done = function () { form.hidden = true; form.parentNode.querySelector('.form-done').classList.add('is-shown'); };
+      var f = function (n) { var el = form.elements[n]; return el ? el.value.trim() : ''; };
+      var msg = 'Hello Eximo, I would like a consultation.\n\nName: ' + f('name') + '\nPhone: ' + f('phone') +
+        (f('email') ? '\nEmail: ' + f('email') : '') + '\nInterested in: ' + f('goal') + '\nDestination: ' + f('country') +
+        (f('message') ? '\n\nAbout me: ' + f('message') : '');
+      var wa = 'https://wa.me/' + form.getAttribute('data-wa') + '?text=' + encodeURIComponent(msg);
+      track('generate_lead', { form: 'consultation', goal: f('goal'), destination: f('country') });
       var ep = form.getAttribute('data-endpoint');
-      if (ep) fetch(ep, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } }).then(done, done);
-      else done();
+      if (ep) fetch(ep, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } }).catch(function () {});
+      var w = window.open(wa, '_blank', 'noopener');
+      if (!w) location.href = wa;
+      var done = form.parentNode.querySelector('.form-done');
+      $('a', done).href = wa;
+      form.hidden = true; done.classList.add('is-shown');
     });
   });
 })();

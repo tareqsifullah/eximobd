@@ -9,6 +9,9 @@ export const site = {
   phone: '+880 1577-744190',
   whatsapp: '8801577744190',
   facebook: 'https://www.facebook.com/eximobd',
+  reviewed: 'November 2026', // shown in every page header; update when content is reviewed
+  ga4: '', // Google Analytics 4 measurement ID, e.g. 'G-XXXXXXX'
+  gscVerification: '', // Google Search Console HTML-tag verification code
   email: 'info@eximobd.com',
   office: 'Via Francesco Ravaschio 97, Sestri Ponente, Genova, Italy',
   officeMap: 'https://www.google.com/maps/search/?api=1&query=Via+Francesco+Ravaschio+97+Sestri+Ponente+Genova+Italy',
