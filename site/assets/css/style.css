@@ -452,9 +452,9 @@ html[lang=bn] .finder select { font-style: normal; }
 .cc { grid-row: span 2; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 600 .76rem/1 var(--sans); letter-spacing: .05em; color: #fff; background: var(--navy); }
 [data-region="Europe"] .cc { background: #3e6bb3; }
 [data-region="North America"] .cc { background: #1f2b7a; }
-[data-region="Oceania"] .cc { background: #2a8798; }
+[data-region="Oceania"] .cc { background: #22717f; }
 [data-region="Asia"] .cc { background: #b4553d; }
-[data-region="Middle East"] .cc { background: #9a7428; }
+[data-region="Middle East"] .cc { background: #84621f; }
 .dc-name { font-family: var(--serif); font-size: 1.2rem; line-height: 1.15; }
 .dc-tag { display: flex; align-items: center; gap: 6px; font-size: .76rem; color: var(--soft); }
 .dc-tag .ic { width: 15px; height: 15px; }
