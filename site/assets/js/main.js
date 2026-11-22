@@ -31,13 +31,98 @@
       var v = country.visas[g.value];
       var dir = f.hasAttribute('data-bn') && bnSlugs.indexOf(country.slug) > -1 ? 'bn/countries/' : 'countries/';
       $('[data-f-link]', f).href = root + dir + country.slug + '.html#' + g.value;
+      $$('[data-goal]', f.parentNode).forEach(function (b) {
+        var on = b.getAttribute('data-goal') === g.value;
+        b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on));
+      });
       if (meta) {
         $('[data-f-name]', meta).textContent = v.name;
         $('[data-f-time]', meta).textContent = 'Typical processing: ' + v.time;
       }
     }
     g.addEventListener('change', update); c.addEventListener('change', update); update();
+    $$('[data-goal]', f.parentNode).forEach(function (b) {
+      b.addEventListener('click', function () { g.value = b.getAttribute('data-goal'); update(); });
+    });
   });
+
+  // Region filter for country cards
+  $$('[data-filter]').forEach(function (bar) {
+    var list = bar.nextElementSibling;
+    $$('button', bar).forEach(function (b) {
+      b.addEventListener('click', function () {
+        var f = b.getAttribute('data-f');
+        $$('button', bar).forEach(function (x) { x.classList.toggle('is-on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
+        $$('[data-region]', list).forEach(function (a) { a.hidden = f !== 'all' && a.getAttribute('data-region') !== f; });
+      });
+    });
+  });
+
+  // Requirement checklists (saved per device)
+  var isBn = document.documentElement.lang === 'bn';
+  var digits = function (s) { return isBn ? String(s).replace(/\d/g, function (d) { return '০১২৩৪৫৬৭৮৯'[d]; }) : String(s); };
+  $$('[data-checklist]').forEach(function (ck) {
+    var key = 'eximo-ck-' + ck.getAttribute('data-checklist'), saved = [];
+    try { saved = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { saved = []; }
+    var boxes = $$('[data-ck]', ck);
+    function upd() {
+      var n = boxes.filter(function (b) { return b.checked; }).length;
+      $('[data-ck-count]', ck).textContent = digits(n + ' / ' + boxes.length);
+      $('[data-ck-bar]', ck).style.width = (n / boxes.length * 100) + '%';
+      ck.classList.toggle('is-done', n === boxes.length);
+    }
+    boxes.forEach(function (b) {
+      b.checked = saved.indexOf(b.getAttribute('data-ck')) > -1;
+      b.addEventListener('change', function () {
+        var on = boxes.filter(function (x) { return x.checked; }).map(function (x) { return x.getAttribute('data-ck'); });
+        try { localStorage.setItem(key, JSON.stringify(on)); } catch (e) {}
+        upd();
+      });
+    });
+    upd();
+  });
+
+  // Mobile action bar appears once the visitor scrolls past the first screen
+  var mb = $('[data-mbar]');
+  if (mb) {
+    var onScroll = function () { mb.classList.toggle('is-on', window.scrollY > 320); };
+    window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  }
+
+  // Reveal-on-scroll, bar-chart growth and count-up figures
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if ('IntersectionObserver' in window && !reduce) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var el = e.target; io.unobserve(el);
+        if (el.hasAttribute('data-count')) countUp(el);
+        else el.classList.add('in');
+      });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    var vh = window.innerHeight;
+    $$('.svc > a, .dcards > a, .mk, .steps li, .lcards > a, .grid-3 > *, .faq details, .ck, .result').forEach(function (el, i) {
+      if (el.getBoundingClientRect().top < vh) return;
+      el.classList.add('rv');
+      el.style.transitionDelay = (i % 4) * 70 + 'ms';
+      el.addEventListener('transitionend', function done(ev) {
+        if (ev.target !== el || ev.propertyName !== 'opacity') return;
+        el.classList.remove('rv', 'in'); el.style.transitionDelay = ''; el.removeEventListener('transitionend', done);
+      });
+      io.observe(el);
+    });
+    $$('[data-count]').forEach(function (el) { io.observe(el); });
+  }
+  function countUp(el) {
+    var end = parseFloat(el.getAttribute('data-count')), dec = +(el.getAttribute('data-dec') || 0), suf = el.getAttribute('data-suf') || '', t0 = null;
+    function step(t) {
+      if (!t0) t0 = t;
+      var p = Math.min(1, (t - t0) / 1200), v = end * (1 - Math.pow(1 - p, 3));
+      el.textContent = v.toFixed(dec) + suf;
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
 
   // Compare tool
   $$('[data-compare]').forEach(function (box) {

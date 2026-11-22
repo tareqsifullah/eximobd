@@ -183,6 +183,7 @@ ${bn ? `<link rel="preload" href="${root}assets/fonts/noto-serif-bengali.woff2" 
 <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': graph })}</script>
 ${site.ga4 ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${site.ga4}"></script>\n<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${site.ga4}');</script>\n` : ''}</head>
 <body>
+${ICONS}
 <a class="sr-only" href="#main">${bn ? 'মূল লেখায় যান' : 'Skip to content'}</a>
 ${bn ? bnChrome.header({ root, path, enAlt }) : `<header class="header">
   <div class="wrap">
@@ -242,11 +243,67 @@ ${bn ? bnChrome.footer({ root }) : `<footer class="footer">
     </div>
   </div>
 </footer>`}
+${mbar(root, bn)}
 <script defer src="${root}assets/js/data.js"></script>
 <script defer src="${root}assets/js/main.js"></script>
 </body>
 </html>`;
 }
+
+// ---------- visual components ----------
+const ICON_PATHS = {
+  study: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.2V16c0 1.6 2.7 3 6 3s6-1.4 6-3v-4.8"/><path d="M22 9v5.5"/>',
+  work: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8.5 7V5.2A2.2 2.2 0 0 1 10.7 3h2.6a2.2 2.2 0 0 1 2.2 2.2V7"/><path d="M3 12.5h18"/>',
+  tourist: '<path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
+  family: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17.5 14c2.6 0 4.2 1.9 4.2 4.8"/>',
+  medical: '<path d="M20.4 5.6a5 5 0 0 0-7.1 0L12 6.9l-1.3-1.3a5 5 0 0 0-7.1 7.1L12 21.1l8.4-8.4a5 5 0 0 0 0-7.1z"/><path d="M3.5 12h4l2-3 3 6 2-3h6"/>',
+  skilled: '<path d="M3 20.5h18"/><path d="M5.5 20.5v-5h3.5v5M10.25 20.5V10h3.5v10.5M15 20.5V4.5h3.5v16"/>',
+  nomad: '<rect x="4" y="4.5" width="16" height="10.5" rx="1.5"/><path d="M2 19h20"/>',
+  passport: '<rect x="5" y="2.5" width="14" height="19" rx="2"/><circle cx="12" cy="10" r="3.5"/><path d="M9 17h6"/>',
+  language: '<path d="M4 4.5h16v11.5H9.5L4 20.5z"/><path d="M8 8.5h8M8 12h5"/>',
+  career: '<circle cx="12" cy="12" r="9.5"/><path d="M15.8 8.2l-2.3 5.3-5.3 2.3 2.3-5.3z"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  clock: '<circle cx="12" cy="12" r="9.5"/><path d="M12 7v5l3.2 2"/>',
+  chat: '<path d="M20.5 11.5a8.5 8.5 0 0 1-12.4 7.6L3 20.5l1.4-4.9A8.5 8.5 0 1 1 20.5 11.5z"/>',
+  phone: '<path d="M21.5 16.4v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 1.6 3.7 2 2 0 0 1 3.6 1.5h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L7.5 9.4a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.8 2z"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  shield: '<path d="M12 2.5l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
+  info: '<circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5M12 7.6v.01"/>',
+  globe: '<circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.8 3.9 6 3.9 9.5s-1.3 6.7-3.9 9.5c-2.6-2.8-3.9-6-3.9-9.5s1.3-6.7 3.9-9.5z"/>',
+  tap: '<path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V10l4.3.9a2 2 0 0 1 1.6 2.2l-.6 5A3 3 0 0 1 14.3 21h-3.1a3 3 0 0 1-2.4-1.2L5.5 15.4a1.5 1.5 0 0 1 2.2-2L9 14.5"/>',
+};
+const ICONS = `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${Object.entries(ICON_PATHS).map(([k, p]) => `<symbol id="i-${k}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</symbol>`).join('')}</defs></svg>`;
+const ic = (n, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const bnDigits = (s) => String(s).replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[d]);
+
+const svcIcon = (h) => ({ 'scholarships.html': 'study', 'work-abroad.html': 'work', 'skilled-migration.html': 'skilled', 'tourist.html': 'tourist', 'digital-nomad.html': 'nomad', 'residency-citizenship.html': 'passport', 'languages.html': 'language', 'career-counselling.html': 'career' })[h.split('/').pop()] || 'globe';
+const serviceGrid = (root, list) => `<div class="svc">${list.map(([h, t, d]) => `<a href="${root}${h}"><span class="svc-ic">${ic(svcIcon(h))}</span><h3>${t}</h3><p>${d}</p>${A}</a>`).join('')}</div>`;
+
+const goalChips = (labels, active, aria) => `<div class="goals" role="group" aria-label="${aria}" data-goals>${visaTypes.map((v) => `<button type="button" data-goal="${v.key}" aria-pressed="${v.key === active}"${v.key === active ? ' class="is-on"' : ''}>${ic(v.key)}<span>${labels[v.key]}</span></button>`).join('')}</div>`;
+
+const figNum = (s) => { const m = String(s).replace(/,/g, '').match(/\d+/); return m ? Number(m[0]) : 0; };
+const marketChart = (rows, { root, lang = 'en' }) => {
+  const bn = lang === 'bn';
+  const max = Math.max(...rows.map((m) => figNum(m.figure)));
+  const L = bn ? { s: 'প্রধান খাত', r: 'পথ', g: 'পুরো গাইড দেখুন' } : { s: 'Main sectors', r: 'Route', g: 'Open the full guide' };
+  return `<div class="mkts">${rows.map((m) => {
+    const [fig, status, sectors, route] = bn ? BN.marketsBn[m.name] : [m.figure, m.status, m.sectors, m.route];
+    const name = bn ? (m.slug ? BN.countryNames[m.slug] : 'ওমান') : m.name;
+    const v = figNum(m.figure);
+    const href = m.slug ? (bn && BN.countriesBn[m.slug] ? `${root}bn/countries/${m.slug}.html#work` : `${root}countries/${m.slug}.html#work`) : null;
+    return `<details class="mk"><summary><span class="mk-name">${name}</span><span class="mk-bar">${v ? `<i style="--w:${Math.max(1.5, (v / max) * 100).toFixed(1)}%"></i>` : ''}</span><span class="mk-fig">${fig}</span><span class="status${statusClass(m.status)}">${status}</span></summary><div class="mk-body"><dl><div><dt>${L.s}</dt><dd>${sectors}</dd></div><div><dt>${L.r}</dt><dd>${route}</dd></div></dl>${href ? `<a class="tlink" href="${href}">${L.g} ${A}</a>` : ''}</div></details>`;
+  }).join('')}</div>`;
+};
+
+const checklist = (id, points, bn = false) => `<div class="ck" data-checklist="${id}">
+        <div class="ck-head"><span>${bn ? 'আপনার প্রস্তুতি' : 'Your readiness'}</span><span class="ck-count" data-ck-count>${bn ? bnDigits(`0 / ${points.length}`) : `0 / ${points.length}`}</span></div>
+        <div class="ck-bar"><i data-ck-bar></i></div>
+        <ul>${points.map((p, i) => `<li><label><input type="checkbox" data-ck="${i}"><span class="ck-box">${ic('check')}</span><span>${p}</span></label></li>`).join('')}</ul>
+        <p class="small ck-hint">${bn ? 'যা আপনার আছে বা হয়ে গেছে তাতে টিক দিন — শুধু এই ডিভাইসে সংরক্ষিত থাকে।' : 'Tick what you already have or have done — saved on this device only.'}</p>
+      </div>`;
+const procChip = (time, bn = false) => `<div class="vchips"><span class="chip">${ic('clock')}<span><small>${bn ? 'সাধারণ প্রসেসিং সময়' : 'Typical processing'}</small>${time}</span></span></div>`;
+
+const mbar = (root, bn) => `<nav class="mbar" aria-label="${bn ? 'দ্রুত যোগাযোগ' : 'Quick contact'}" data-mbar><a href="https://wa.me/${site.whatsapp}" target="_blank" rel="noopener">${ic('chat')}<span>WhatsApp</span></a><a href="tel:${tel}">${ic('phone')}<span>${bn ? 'কল' : 'Call'}</span></a><a class="is-main" href="${root}${bn ? 'bn/' : ''}contact.html#book">${ic('calendar')}<span>${bn ? 'পরামর্শ নিন' : 'Book'}</span></a></nav>`;
 
 // ---------- shared blocks ----------
 const phead = ({ root, crumbs, label, h1, lede, extra = '' }) => `
@@ -279,10 +336,8 @@ const cta = (root, h = 'Not sure which route <em>fits you?</em>', p = 'Book a co
 const statusClass = (s) => (/restrict|suspend/i.test(s) ? ' status--stop' : /limited|reopen|quota|with/i.test(s) ? ' status--warn' : '');
 
 const marketTable = (root, rows) => `
-<div class="tbl-wrap"><table class="tbl tbl--stack">
-  <thead><tr><th>Destination</th><th>Workers, 2025</th><th>Market status</th><th>Main sectors</th><th>Route</th></tr></thead>
-  <tbody>${rows.map((m) => `<tr><td>${m.slug ? `<a class="row-link" href="${root}countries/${m.slug}.html#work">${m.name}</a>` : m.name}</td><td class="num" data-h="Workers">${m.figure}</td><td data-h="Status"><span class="status${statusClass(m.status)}">${m.status}</span></td><td data-h="Sectors">${m.sectors}</td><td data-h="Route">${m.route}</td></tr>`).join('')}</tbody>
-</table></div>
+<p class="mk-hint">${ic('tap')}Tap a country to see sectors and the hiring route</p>
+${marketChart(rows, { root })}
 <p class="source">Approximate departures in 2025 from BMET data as reported by The Business Standard and BSS (January 2026). *UAE figure is January–August 2026 (BMET via bdnews24). Market status reflects reporting up to late 2026 and changes often — we confirm before you commit.</p>`;
 
 const consultForm = (id = 'book') => `
@@ -314,7 +369,7 @@ const compareTool = () => `
   <div><div class="results" data-results aria-live="polite"></div><p class="source">Indicative only, based on typical costs and entry requirements. Your advisor confirms options for your profile.</p></div>
 </div>`;
 
-const directory = (root) => `<div class="directory">${regions.map(([r, label]) => `<div><h3>${label}</h3>${byRegion(r).map((c) => `<a href="${root}countries/${c.slug}.html">${c.name}<small>${c.primary === 'work' ? 'Work' : c.primary === 'medical' ? 'Medical' : 'Study'}</small></a>`).join('')}</div>`).join('')}</div>`;
+const directory = (root) => `<div class="chips" role="group" aria-label="Filter by region" data-filter><button type="button" class="is-on" aria-pressed="true" data-f="all">All <small>${countries.length}</small></button>${regions.map(([r, label]) => `<button type="button" aria-pressed="false" data-f="${r}">${label} <small>${byRegion(r).length}</small></button>`).join('')}</div><div class="dcards">${regions.flatMap(([r]) => byRegion(r)).map((c) => { const p = c.primary || 'study'; return `<a href="${root}countries/${c.slug}.html" data-region="${c.region}"><span class="cc">${c.flag.toUpperCase()}</span><span class="dc-name">${c.name}</span><span class="dc-tag">${ic(p)}${visaTypes.find((v) => v.key === p).label}</span></a>`; }).join('')}</div>`;
 
 const workerHelp = [
   'Agency licence, employer and visa verification before you pay',
@@ -346,6 +401,7 @@ function home() {
         <div class="hero-actions"><a class="btn" href="contact.html#book">Book a consultation ${A}</a><a class="btn btn--line" href="#services">Our services</a></div>
       </div>
     </div>
+    ${goalChips(Object.fromEntries(visaTypes.map((v) => [v.key, v.label])), 'study', 'Choose your goal')}
     <div class="finder" data-finder data-root="${root}">
       <span class="f-label">Find your route</span>
       <span>I’d like to</span>
@@ -356,9 +412,9 @@ function home() {
     </div>
     <div class="finder-meta" aria-live="polite"><span><strong data-f-name></strong></span><span data-f-time></span></div>
     <div class="figures">
-      <div><strong>1.13m</strong><span>Bangladeshis left for overseas jobs in 2025</span><small>Source: BMET</small></div>
-      <div><strong>${countries.length}</strong><span>Destinations we advise on, each across five visa categories</span></div>
-      <div><strong>101</strong><span>Countries where Bangladesh permits dual citizenship</span><small>Source: Ministry of Home Affairs</small></div>
+      <div><strong data-count="1.13" data-dec="2" data-suf="m">1.13m</strong><span>Bangladeshis left for overseas jobs in 2025</span><small>Source: BMET</small></div>
+      <div><strong data-count="${countries.length}">${countries.length}</strong><span>Destinations we advise on, each across five visa categories</span></div>
+      <div><strong data-count="101">101</strong><span>Countries where Bangladesh permits dual citizenship</span><small>Source: Ministry of Home Affairs</small></div>
     </div>
   </div>
 </section>
@@ -366,7 +422,7 @@ function home() {
 <section class="sec" id="services" style="margin-top:96px">
   <div class="wrap">
     ${head('01', 'What we do', 'Eight services, <em>one advisor.</em>', 'The person who assesses your profile is the person who checks your file before it is submitted.')}
-    <div class="index">${services.map(([h, t, d], i) => `<a href="${h}"><span class="n">${String(i + 1).padStart(2, '0')}</span><h3>${t}</h3><p>${d}</p>${A}</a>`).join('')}</div>
+    ${serviceGrid(root, services)}
   </div>
 </section>
 
@@ -395,7 +451,7 @@ function home() {
 <section class="sec">
   <div class="wrap cols">
     <div class="sticky"><span class="label"><b>05</b>Languages</span><h2>Learn the language <em>before</em> you go.</h2><p class="body-lg" style="margin-top:20px">Language scores decide admissions, work visas and migration points. We place you with a verified partner institute and track your progress to the exam.</p><a class="tlink" href="languages.html">All language courses ${A}</a></div>
-    <div><table class="tbl tbl--stack" style="min-width:0"><thead><tr><th>Course</th><th>Exam</th><th>Leads to</th></tr></thead><tbody>${languageCourses.map((l) => `<tr><td>${l.lang}</td><td data-h="Exam">${l.exam}</td><td data-h="For">${l.for}</td></tr>`).join('')}</tbody></table></div>
+    <div class="lcards">${languageCourses.map((l) => `<a href="languages.html"><span class="lc-top">${ic('language')}<b>${l.lang}</b></span><span class="lc-exam">${l.exam}</span><span class="lc-for">${l.for}</span></a>`).join('')}</div>
   </div>
 </section>
 
@@ -442,12 +498,12 @@ function countryPage(c) {
       <span class="label">${vt.label} · ${c.name}</span>
       <h2>${v.name}</h2>
       <p class="lede">${v.summary}</p>
+      ${procChip(v.time)}
       <h3 class="h4" style="margin-bottom:14px">Key requirements</h3>
-      <ul class="ticks ticks--num">${v.points.map((p) => `<li>${p}</li>`).join('')}</ul>
-      <div class="callout"><strong>Good to know</strong>${v.note}</div>
+      ${checklist(`${c.slug}-${vt.key}`, v.points)}
+      <div class="callout callout--ic">${ic('info')}<div><strong>Good to know</strong>${v.note}</div></div>
     </div>
     <aside class="aside">
-      <dl><dt>Typical processing</dt><dd>${v.time}</dd></dl>
       <h3>How we help</h3>
       <ul class="plain">${(vt.key === 'work' && c.study === false ? workerHelp : vt.help.slice(0, 4)).map((h) => `<li>${h}</li>`).join('')}</ul>
       <a class="btn btn--block" href="${root}contact.html#book">Start my application ${A}</a>
@@ -460,7 +516,7 @@ function countryPage(c) {
   const body = `
 ${phead({ root, crumbs: [`<a href="${root}destinations.html">Destinations</a>`, `<span>${c.name}</span>`], label: `${regions.find(([r]) => r === c.region)[1]} · Visa guide for Bangladeshi nationals`, h1: c.name, lede: c.intro, extra: facts })}
 <div class="tabs-bar"><div class="wrap"><div class="tabs" role="tablist" aria-label="Visa types">
-  ${visaTypes.map((vt) => `<button class="tab" role="tab" id="tab-${vt.key}" aria-controls="${vt.key}" aria-selected="${vt.key === primary}" data-tab="${vt.key}">${vt.label}</button>`).join('')}
+  ${visaTypes.map((vt) => `<button class="tab" role="tab" id="tab-${vt.key}" aria-controls="${vt.key}" aria-selected="${vt.key === primary}" data-tab="${vt.key}">${ic(vt.key)}<span>${vt.label}</span></button>`).join('')}
 </div></div></div>
 ${panels}
 ${c.slug === 'italy' ? `<section class="sec sec--sm sec--tint"><div class="wrap cols"><div><span class="label">Our official office</span><h2>Based in <em>Genova.</em></h2></div><div><p class="lede">Eximo’s official office is in Sestri Ponente, Genova. Clients in Italy can meet us in person; clients in Bangladesh are advised by phone, WhatsApp and video call.</p><dl class="contact-dl"><div><dt>Address</dt><dd><a href="${site.officeMap}" target="_blank" rel="noopener">${site.office}</a></dd></div><div><dt>WhatsApp</dt><dd><a href="https://wa.me/${site.whatsapp}" target="_blank" rel="noopener">${site.phone}</a></dd></div></dl></div></div></section>` : ''}
@@ -530,9 +586,9 @@ ${phead({ root, crumbs: ['<span>Work abroad</span>'], label: 'Overseas employmen
   <div class="wrap">
     ${head('02', 'Routes', 'Three ways to <em>work abroad.</em>')}
     <div class="grid-3">
-      <div><h3>Government channels</h3><p>Government-to-government recruitment with set costs and official selection.</p><ul class="plain"><li><a class="tlink" href="countries/south-korea.html#work">South Korea — EPS via BOESL</a></li><li><a class="tlink" href="countries/japan.html#work">Japan — Specified Skilled Worker</a></li><li><a class="tlink" href="countries/malaysia.html#work">Malaysia — approved channel</a></li></ul></div>
-      <div><h3>Employer recruitment</h3><p>An overseas employer issues a visa through a BMET-licensed agency. This is how most Gulf jobs work.</p><ul class="plain"><li><a class="tlink" href="countries/saudi-arabia.html#work">Saudi Arabia</a></li><li><a class="tlink" href="countries/qatar.html#work">Qatar</a></li><li><a class="tlink" href="countries/kuwait.html#work">Kuwait</a> · <a class="tlink" href="countries/maldives.html#work">Maldives</a></li></ul></div>
-      <div><h3>Skilled & professional</h3><p>Sponsored jobs and points-based routes for graduates and experienced professionals.</p><ul class="plain"><li><a class="tlink" href="countries/singapore.html#work">Singapore — S Pass / EP</a></li><li><a class="tlink" href="countries/italy.html#work">Italy — Decreto Flussi & Blue Card</a></li><li><a class="tlink" href="skilled-migration.html">Skilled migration (PR) ${A}</a></li></ul></div>
+      <div><span class="svc-ic">${ic('shield')}</span><h3>Government channels</h3><p>Government-to-government recruitment with set costs and official selection.</p><ul class="plain"><li><a class="tlink" href="countries/south-korea.html#work">South Korea — EPS via BOESL</a></li><li><a class="tlink" href="countries/japan.html#work">Japan — Specified Skilled Worker</a></li><li><a class="tlink" href="countries/malaysia.html#work">Malaysia — approved channel</a></li></ul></div>
+      <div><span class="svc-ic">${ic('work')}</span><h3>Employer recruitment</h3><p>An overseas employer issues a visa through a BMET-licensed agency. This is how most Gulf jobs work.</p><ul class="plain"><li><a class="tlink" href="countries/saudi-arabia.html#work">Saudi Arabia</a></li><li><a class="tlink" href="countries/qatar.html#work">Qatar</a></li><li><a class="tlink" href="countries/kuwait.html#work">Kuwait</a> · <a class="tlink" href="countries/maldives.html#work">Maldives</a></li></ul></div>
+      <div><span class="svc-ic">${ic('skilled')}</span><h3>Skilled & professional</h3><p>Sponsored jobs and points-based routes for graduates and experienced professionals.</p><ul class="plain"><li><a class="tlink" href="countries/singapore.html#work">Singapore — S Pass / EP</a></li><li><a class="tlink" href="countries/italy.html#work">Italy — Decreto Flussi & Blue Card</a></li><li><a class="tlink" href="skilled-migration.html">Skilled migration (PR) ${A}</a></li></ul></div>
     </div>
   </div>
 </section>
@@ -546,7 +602,7 @@ ${phead({ root, crumbs: ['<span>Work abroad</span>'], label: 'Overseas employmen
   <div class="wrap cols">
     <div><span class="label"><b>04</b>Protect yourself</span><h2>How to spot <em>recruitment fraud.</em></h2></div>
     <div>
-      <ul class="ticks">
+      <ul class="ticks ticks--warn">
         <li>The agency cannot show a valid BMET recruiting licence.</li>
         <li>You are asked to pay into a personal bank or mobile-money account.</li>
         <li>The visa cannot be verified on the destination country’s official portal.</li>
@@ -896,10 +952,8 @@ const bnForm = () => `
 </div>`;
 
 const bnMarketTable = (root, rows) => `
-<div class="tbl-wrap"><table class="tbl tbl--stack">
-  <thead><tr><th>দেশ</th><th>কর্মী, ২০২৫</th><th>বাজারের অবস্থা</th><th>প্রধান খাত</th><th>পথ</th></tr></thead>
-  <tbody>${rows.map((m) => { const [fig, status, sectors, route] = BN.marketsBn[m.name]; const name = m.slug ? BN.countryNames[m.slug] : 'ওমান'; const href = m.slug ? (BN.countriesBn[m.slug] ? `${root}bn/countries/${m.slug}.html#work` : `${root}countries/${m.slug}.html#work`) : null; return `<tr><td>${href ? `<a class="row-link" href="${href}">${name}</a>` : name}</td><td class="num" data-h="কর্মী">${fig}</td><td data-h="অবস্থা"><span class="status${statusClass(m.status)}">${status}</span></td><td data-h="খাত">${sectors}</td><td data-h="পথ">${route}</td></tr>`; }).join('')}</tbody>
-</table></div>
+<p class="mk-hint">${ic('tap')}খাত ও নিয়োগের পথ দেখতে দেশের নামে চাপুন</p>
+${marketChart(rows, { root, lang: 'bn' })}
 <p class="source">২০২৫ সালের আনুমানিক বহির্গমন: BMET-এর তথ্য, The Business Standard ও বাসস-এ প্রকাশিত (জানুয়ারি ২০২৬)। *সংযুক্ত আরব আমিরাতের সংখ্যা জানুয়ারি–আগস্ট ২০২৬-এর (BMET, bdnews24)। বাজারের অবস্থা ২০২৬-এর শেষ দিক পর্যন্ত প্রকাশিত খবরের ভিত্তিতে, এবং প্রায়ই বদলায় — সিদ্ধান্তের আগে আমরা নিশ্চিত করি।</p>`;
 
 function bnHome() {
@@ -914,6 +968,7 @@ function bnHome() {
         <div class="hero-actions"><a class="btn" href="contact.html#book">${BN.ui.book} ${A}</a><a class="btn btn--line" href="https://wa.me/${site.whatsapp}" target="_blank" rel="noopener">${BN.ui.messageWa}</a></div>
       </div>
     </div>
+    ${goalChips(BN.visaLabels, 'work', 'উদ্দেশ্য বেছে নিন')}
     <div class="finder" data-finder data-bn="${Object.keys(BN.countriesBn).join(',')}">
       <span class="f-label">আপনার পথ খুঁজুন</span>
       <span>আমি যেতে চাই</span>
@@ -921,7 +976,7 @@ function bnHome() {
       <select aria-label="উদ্দেশ্য" data-f-goal>${visaTypes.map((v) => `<option value="${v.key}"${v.key === 'work' ? ' selected' : ''}>${BN.finderVerbs[v.key]}</option>`).join('')}</select>
       <a class="btn f-go" href="#" data-f-link>দেখুন ${A}</a>
     </div>
-    <p class="small" style="margin-top:12px">৫টি দেশের গাইড বাংলায় আছে; বাকি দেশগুলোর বিস্তারিত ইংরেজিতে।</p>
+    <p class="small" style="margin-top:12px">${bnDigits(Object.keys(BN.countriesBn).length)}টি দেশের গাইড বাংলায় আছে; বাকি দেশগুলোর বিস্তারিত ইংরেজিতে।</p>
     <div class="figures">
       <div><strong>১১.৩ লাখ</strong><span>বাংলাদেশি ২০২৫ সালে বিদেশে চাকরি নিয়ে গেছেন</span><small>উৎস: BMET</small></div>
       <div><strong>২০</strong><span>দেশ নিয়ে আমরা পরামর্শ দিই, প্রতিটিতে পাঁচ ধরনের ভিসা</span></div>
@@ -933,7 +988,7 @@ function bnHome() {
 <section class="sec" style="margin-top:96px">
   <div class="wrap">
     ${head('01', 'আমাদের সেবা', 'আটটি সেবা, <em>একজন পরামর্শদাতা।</em>', 'যিনি আপনার প্রোফাইল যাচাই করেন, জমা দেওয়ার আগে তিনিই আপনার ফাইল পরীক্ষা করেন। কিছু বিস্তারিত পাতা এখন ইংরেজিতে।')}
-    <div class="index">${BN.servicesBn.map(([h, t, d], i) => `<a href="${root}${h}"><span class="n">${String(i + 1).padStart(2, '0')}</span><h3>${t}</h3><p>${d}</p>${A}</a>`).join('')}</div>
+    ${serviceGrid(root, BN.servicesBn)}
   </div>
 </section>
 
@@ -947,8 +1002,8 @@ function bnHome() {
 
 <section class="sec">
   <div class="wrap">
-    ${head('03', 'দেশভিত্তিক গাইড', 'বাংলায় পাঁচটি <em>দেশের গাইড।</em>')}
-    <div class="directory">${Object.keys(BN.countriesBn).map((s) => `<a href="countries/${s}.html">${BN.countryNames[s]}<small>${BN.visaLabels.work}</small></a>`).join('')}<a href="${root}destinations.html">${BN.ui.allCountriesEn}<small>EN</small></a></div>
+    ${head('03', 'দেশভিত্তিক গাইড', 'বাংলায় দশটি <em>দেশের গাইড।</em>')}
+    <div class="dcards">${Object.keys(BN.countriesBn).map((s) => { const c = countries.find((x) => x.slug === s); return `<a href="countries/${s}.html" data-region="${c.region}"><span class="cc">${c.flag.toUpperCase()}</span><span class="dc-name">${BN.countryNames[s]}</span><span class="dc-tag">${ic('work')}${BN.visaLabels.work}</span></a>`; }).join('')}<a href="${root}destinations.html"><span class="cc">EN</span><span class="dc-name">${BN.ui.allCountriesEn}</span><span class="dc-tag">${ic('globe')}২০টি দেশ</span></a></div>
   </div>
 </section>
 
@@ -984,9 +1039,9 @@ ${bnPhead({ root, crumb: BN.ui.work, label: 'বিদেশে কর্মস�
   <div class="wrap">
     ${head('02', 'পথ', 'বিদেশে কাজের <em>তিনটি পথ।</em>')}
     <div class="grid-3">
-      <div><h3>সরকারি চ্যানেল</h3><p>নির্ধারিত খরচ ও অফিশিয়াল বাছাইয়ে সরকার-টু-সরকার নিয়োগ।</p><ul class="plain"><li><a class="tlink" href="countries/south-korea.html#work">দক্ষিণ কোরিয়া — BOESL-এর মাধ্যমে EPS</a></li><li><a class="tlink" href="countries/japan.html#work">জাপান — স্পেসিফায়েড স্কিলড ওয়ার্কার</a></li><li><a class="tlink" href="countries/malaysia.html#work">মালয়েশিয়া — অনুমোদিত চ্যানেল</a></li></ul></div>
-      <div><h3>নিয়োগকর্তার মাধ্যমে</h3><p>বিদেশি নিয়োগকর্তা BMET-লাইসেন্সপ্রাপ্ত এজেন্সির মাধ্যমে ভিসা দেন। উপসাগরীয় দেশের বেশিরভাগ চাকরি এভাবেই হয়।</p><ul class="plain"><li><a class="tlink" href="countries/saudi-arabia.html#work">সৌদি আরব</a></li><li><a class="tlink" href="${root}countries/qatar.html#work">কাতার (ইংরেজি)</a></li><li><a class="tlink" href="${root}countries/kuwait.html#work">কুয়েত</a> · <a class="tlink" href="${root}countries/maldives.html#work">মালদ্বীপ</a></li></ul></div>
-      <div><h3>দক্ষ ও পেশাজীবী</h3><p>স্নাতক ও অভিজ্ঞ পেশাজীবীদের জন্য স্পনসরড চাকরি ও পয়েন্টভিত্তিক পথ।</p><ul class="plain"><li><a class="tlink" href="countries/italy.html#work">ইতালি — ডেক্রেতো ফ্লুসি ও ব্লু কার্ড</a></li><li><a class="tlink" href="${root}countries/singapore.html#work">সিঙ্গাপুর — S Pass / EP</a></li><li><a class="tlink" href="${root}skilled-migration.html">দক্ষ অভিবাসন (PR) ${A}</a></li></ul></div>
+      <div><span class="svc-ic">${ic('shield')}</span><h3>সরকারি চ্যানেল</h3><p>নির্ধারিত খরচ ও অফিশিয়াল বাছাইয়ে সরকার-টু-সরকার নিয়োগ।</p><ul class="plain"><li><a class="tlink" href="countries/south-korea.html#work">দক্ষিণ কোরিয়া — BOESL-এর মাধ্যমে EPS</a></li><li><a class="tlink" href="countries/japan.html#work">জাপান — স্পেসিফায়েড স্কিলড ওয়ার্কার</a></li><li><a class="tlink" href="countries/malaysia.html#work">মালয়েশিয়া — অনুমোদিত চ্যানেল</a></li></ul></div>
+      <div><span class="svc-ic">${ic('work')}</span><h3>নিয়োগকর্তার মাধ্যমে</h3><p>বিদেশি নিয়োগকর্তা BMET-লাইসেন্সপ্রাপ্ত এজেন্সির মাধ্যমে ভিসা দেন। উপসাগরীয় দেশের বেশিরভাগ চাকরি এভাবেই হয়।</p><ul class="plain"><li><a class="tlink" href="countries/saudi-arabia.html#work">সৌদি আরব</a></li><li><a class="tlink" href="countries/qatar.html#work">কাতার</a></li><li><a class="tlink" href="countries/kuwait.html#work">কুয়েত</a> · <a class="tlink" href="countries/maldives.html#work">মালদ্বীপ</a></li></ul></div>
+      <div><span class="svc-ic">${ic('skilled')}</span><h3>দক্ষ ও পেশাজীবী</h3><p>স্নাতক ও অভিজ্ঞ পেশাজীবীদের জন্য স্পনসরড চাকরি ও পয়েন্টভিত্তিক পথ।</p><ul class="plain"><li><a class="tlink" href="countries/italy.html#work">ইতালি — ডেক্রেতো ফ্লুসি ও ব্লু কার্ড</a></li><li><a class="tlink" href="countries/singapore.html#work">সিঙ্গাপুর — S Pass / EP</a></li><li><a class="tlink" href="${root}skilled-migration.html">দক্ষ অভিবাসন (PR) ${A}</a></li></ul></div>
     </div>
   </div>
 </section>
@@ -1000,7 +1055,7 @@ ${bnPhead({ root, crumb: BN.ui.work, label: 'বিদেশে কর্মস�
   <div class="wrap cols">
     <div><span class="label"><b>04</b>নিজেকে রক্ষা করুন</span><h2>রিক্রুটিং প্রতারণা <em>চেনার উপায়।</em></h2></div>
     <div>
-      <ul class="ticks">${BN.fraudBn.map((f) => `<li>${f}</li>`).join('')}</ul>
+      <ul class="ticks ticks--warn">${BN.fraudBn.map((f) => `<li>${f}</li>`).join('')}</ul>
       <div class="callout"><strong>আগে আমাদের পাঠান</strong>কাউকে টাকা দেওয়ার আগে অফার লেটার, ভিসার কপি ও এজেন্সির তথ্য আমাদের পাঠান। আমরা বিনামূল্যে যাচাই করে দেব।</div>
     </div>
   </div>
@@ -1058,12 +1113,12 @@ function bnCountry(slug) {
       <span class="label">${BN.visaLabels[k]} · ${name}</span>
       <h2>${v.name}</h2>
       <p class="lede">${v.summary}</p>
+      ${procChip(v.time, true)}
       <h3 class="h4" style="margin-bottom:14px">প্রধান শর্তাবলি</h3>
-      <ul class="ticks ticks--num">${v.points.map((p) => `<li>${p}</li>`).join('')}</ul>
-      <div class="callout"><strong>জেনে রাখুন</strong>${v.note}</div>
+      ${checklist(`bn-${slug}-${k}`, v.points, true)}
+      <div class="callout callout--ic">${ic('info')}<div><strong>জেনে রাখুন</strong>${v.note}</div></div>
     </div>
     <aside class="aside">
-      <dl><dt>সাধারণ প্রসেসিং সময়</dt><dd>${v.time}</dd></dl>
       <h3>আমরা যেভাবে সাহায্য করি</h3>
       <ul class="plain">${BN.help[k].map((h) => `<li>${h}</li>`).join('')}</ul>
       <a class="btn btn--block" href="${root}bn/contact.html#book">আবেদন শুরু করুন ${A}</a>
@@ -1076,7 +1131,7 @@ function bnCountry(slug) {
   const body = `
 ${bnPhead({ root, crumb: name, label: `${BN.regionsBn[c.region]} · বাংলাদেশি নাগরিকদের ভিসা গাইড`, h1: name, lede: d.intro, extra: facts })}
 <div class="tabs-bar"><div class="wrap"><div class="tabs" role="tablist" aria-label="ভিসার ধরন">
-  ${order.map((k) => `<button class="tab" role="tab" id="tab-${k}" aria-controls="${k}" aria-selected="${k === primary}" data-tab="${k}">${BN.visaLabels[k]}</button>`).join('')}
+  ${order.map((k) => `<button class="tab" role="tab" id="tab-${k}" aria-controls="${k}" aria-selected="${k === primary}" data-tab="${k}">${ic(k)}<span>${BN.visaLabels[k]}</span></button>`).join('')}
 </div></div></div>
 ${panels}
 <section class="sec sec--sm" style="margin-top:56px">
