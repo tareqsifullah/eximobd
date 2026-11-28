@@ -2,7 +2,7 @@
 
 > Study abroad, work visa, skilled migration, residency and language-course advisory for students, workers and professionals from Bangladesh. Official office: Via Francesco Ravaschio 97, Sestri Ponente, Genova, Italy. Phone / WhatsApp: +880 1577-744190. Facebook: https://www.facebook.com/eximobd. Information last reviewed November 2026.
 
-Eximo advises Bangladeshi nationals on study, work, tourist, family and medical visas for 20 countries, overseas employment, skilled migration, digital nomad visas, residency and citizenship by investment (with licensed partner lawyers), and language courses (IELTS, German, Japanese, Korean, Italian) through partner institutes. Visa decisions are made only by governments; overseas employment is processed through BMET-licensed recruiting agencies.
+Eximo advises Bangladeshi nationals on study, work, tourist, family and medical visas for 21 countries, overseas employment, skilled migration, digital nomad visas, residency and citizenship by investment (with licensed partner lawyers), and language courses (IELTS, German, Japanese, Korean, Italian) through partner institutes. Visa decisions are made only by governments; overseas employment is processed through BMET-licensed recruiting agencies.
 
 ## Services
 - [Work abroad from Bangladesh](https://www.eximobd.com/work-abroad.html): largest destinations for Bangladeshi workers (2025 BMET data), routes, departure process, fraud warnings
@@ -31,6 +31,7 @@ Eximo advises Bangladeshi nationals on study, work, tourist, family and medical 
 - [Malaysia](https://www.eximobd.com/countries/malaysia.html): Affordable degrees, branch campuses of UK and Australian universities.
 - [Japan](https://www.eximobd.com/countries/japan.html): MEXT scholarships, language schools and a growing skilled-worker programme.
 - [South Korea](https://www.eximobd.com/countries/south-korea.html): GKS scholarships, tech universities and the EPS work programme.
+- [China](https://www.eximobd.com/countries/china.html): Chinese Government Scholarships, low-cost English-taught degrees and designated hospitals in Kunming.
 - [United Arab Emirates](https://www.eximobd.com/countries/uae.html): Tax-free salaries, branch campuses and long-term residence options.
 - [Singapore](https://www.eximobd.com/countries/singapore.html): World-ranked universities and a global finance and tech hub.
 - [India](https://www.eximobd.com/countries/india.html): The most popular choice for medical treatment from Bangladesh.
@@ -59,3 +60,4 @@ Eximo advises Bangladeshi nationals on study, work, tourist, family and medical 
 - [bn/countries/maldives.html](https://www.eximobd.com/bn/countries/maldives.html)
 - [bn/countries/singapore.html](https://www.eximobd.com/bn/countries/singapore.html)
 - [bn/countries/uae.html](https://www.eximobd.com/bn/countries/uae.html)
+- [bn/countries/china.html](https://www.eximobd.com/bn/countries/china.html)

@@ -28,7 +28,7 @@ Audit: Lighthouse 12 (mobile), 22 Nov 2026.
 ### Structured data (JSON-LD)
 - [x] Organisation (ProfessionalService) on every page: Genova address, phone, Facebook
 - [x] Breadcrumbs on every inner page
-- [x] FAQPage on the home page and on all 20 country pages (5 visa Q&As each)
+- [x] FAQPage on the home page and on all country pages (5 visa Q&As each)
 - [x] ItemList on visa-type pages, Course on the languages page, Article on work-abroad
 
 ### AI search (ChatGPT, Claude, Perplexity, Google AI Overviews)
@@ -59,7 +59,7 @@ Audit: Lighthouse 12 (mobile), 22 Nov 2026.
 - Content lives in `build/bn.mjs`
 
 ## Next content work (recommended order)
-1. ~~More Bangla country guides~~ — done: Qatar, Kuwait, Maldives, Singapore, UAE added (10 Bangla country guides in total).
+1. ~~More Bangla country guides~~ — done: Qatar, Kuwait, Maldives, Singapore, UAE added (10 Bangla country guides in total). China added in English and Bangla (11 Bangla guides).
 2. **Italy-specific pages** for the Genova office: permesso di soggiorno, family reunification, Decreto Flussi click-day guide.
 3. **Monthly news/updates page** — market openings (Malaysia, Oman), quota dates, scholarship deadlines. Fresh content earns links and AI citations.
 4. **Client stories** with permission (real outcomes build trust and E-E-A-T).

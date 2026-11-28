@@ -382,7 +382,7 @@ const workerHelp = [
 function home() {
   const root = '';
   const services = [
-    ['scholarships.html', 'Study abroad & scholarships', 'University shortlists, funding searches and student visas for 20 destinations.'],
+    ['scholarships.html', 'Study abroad & scholarships', 'University shortlists, funding searches and student visas for ${countries.length} destinations.'],
     ['work-abroad.html', 'Work abroad', 'Safe, verified routes to the Gulf, Asia and Europe — from Saudi Arabia to Italy.'],
     ['skilled-migration.html', 'Skilled migration', 'Points-based permanent residence in Canada, Australia, New Zealand, the UK and Germany.'],
     ['visas/tourist.html', 'Visit, family & medical visas', 'Tourist, Umrah, spouse, parent and treatment visas, prepared properly the first time.'],
@@ -805,6 +805,9 @@ function scholarshipsPage() {
     ['DSU regional scholarships', 'Italy', 'Bachelor’s, Master’s', 'Tuition, stipend, housing (income-based)'],
     ['Australia Awards', 'Australia', 'Master’s', 'Tuition, living, travel'],
     ['MEXT', 'Japan', 'Undergraduate to PhD', 'Tuition, stipend, flights'],
+    ['Chinese Government Scholarship (CSC)', 'China', 'Bachelor’s to PhD', 'Tuition, housing, insurance, CNY 2,500–3,500 a month'],
+    ['Provincial & university scholarships', 'China', 'Bachelor’s to PhD', 'Full or partial tuition, sometimes a stipend'],
+    ['International Chinese Language Teachers Scholarship', 'China', 'Language year to Master’s', 'Tuition, housing, stipend, insurance'],
     ['Global Korea Scholarship', 'South Korea', 'Undergraduate to PhD', 'Tuition, stipend, flights, Korean course'],
     ['Saudi university scholarships', 'Saudi Arabia', 'Undergraduate to PhD', 'Tuition, housing, stipend, flights'],
     ['Government of Ireland Scholarship', 'Ireland', 'Master’s, PhD', 'Stipend and fee waiver'],
@@ -830,7 +833,7 @@ ${phead({ root, crumbs: ['<span>Study</span>', '<span>Scholarships</span>'], lab
   </div>
 </section>
 ${cta(root, 'Which scholarships <em>fit you?</em>', 'Share your transcripts and scores. We will send you a shortlist of awards and deadlines.')}`;
-  return layout({ title: `Scholarships for Bangladeshi Students to Study Abroad | ${site.name}`, description: 'Funded scholarships for Bangladeshi students: Chevening, DAAD, MEXT, GKS, Australia Awards, Fulbright and Italy DSU, with matching and essay review.', root, active: 'study', body, path: 'scholarships.html' });
+  return layout({ title: `Scholarships for Bangladeshi Students to Study Abroad | ${site.name}`, description: 'Funded scholarships for Bangladeshi students: Chevening, DAAD, MEXT, GKS, Chinese Government (CSC), Australia Awards, Fulbright and Italy DSU, with matching and essay review.', root, active: 'study', body, path: 'scholarships.html' });
 }
 
 function careerPage() {
@@ -1002,8 +1005,8 @@ function bnHome() {
 
 <section class="sec">
   <div class="wrap">
-    ${head('03', 'দেশভিত্তিক গাইড', 'বাংলায় দশটি <em>দেশের গাইড।</em>')}
-    <div class="dcards">${Object.keys(BN.countriesBn).map((s) => { const c = countries.find((x) => x.slug === s); return `<a href="countries/${s}.html" data-region="${c.region}"><span class="cc">${c.flag.toUpperCase()}</span><span class="dc-name">${BN.countryNames[s]}</span><span class="dc-tag">${ic('work')}${BN.visaLabels.work}</span></a>`; }).join('')}<a href="${root}destinations.html"><span class="cc">EN</span><span class="dc-name">${BN.ui.allCountriesEn}</span><span class="dc-tag">${ic('globe')}২০টি দেশ</span></a></div>
+    ${head('03', 'দেশভিত্তিক গাইড', `বাংলায় ${bnDigits(Object.keys(BN.countriesBn).length)}টি <em>দেশের গাইড।</em>`)}
+    <div class="dcards">${Object.keys(BN.countriesBn).map((s) => { const c = countries.find((x) => x.slug === s); const t = BN.countriesBn[s].primary || 'work'; return `<a href="countries/${s}.html" data-region="${c.region}"><span class="cc">${c.flag.toUpperCase()}</span><span class="dc-name">${BN.countryNames[s]}</span><span class="dc-tag">${ic(t)}${BN.visaLabels[t]}</span></a>`; }).join('')}<a href="${root}destinations.html"><span class="cc">EN</span><span class="dc-name">${BN.ui.allCountriesEn}</span><span class="dc-tag">${ic('globe')}${bnDigits(countries.length)}টি দেশ</span></a></div>
   </div>
 </section>
 
@@ -1102,8 +1105,8 @@ function bnCountry(slug) {
   const d = BN.countriesBn[slug];
   const name = BN.countryNames[slug];
   const root = '../../';
-  const primary = 'work';
-  const order = ['work', 'study', 'tourist', 'family', 'medical'];
+  const primary = d.primary || 'work';
+  const order = [primary, ...['work', 'study', 'tourist', 'family', 'medical'].filter((k) => k !== primary)];
   const panels = order.map((k) => {
     const v = d.visas[k];
     return `
